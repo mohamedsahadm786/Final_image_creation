@@ -90,6 +90,64 @@ def _load_config() -> dict:
     return yaml.safe_load(CONFIG_PATH.read_text(encoding="utf-8"))
 
 
+# ─── JSON retry config ────────────────────────────────────────────────────
+# Ollama (especially 7B models) occasionally returns malformed JSON.
+# We retry the SAME scenario up to MAX_JSON_RETRIES times before failing
+# that scenario. The batch continues to the next scenario regardless.
+MAX_JSON_RETRIES = 2  # initial attempt + this many retries = up to 3 total
+
+
+def _call_with_json_retry(
+    build_fn,
+    scenario_id: str,
+    step_label: str,
+    max_retries: int = MAX_JSON_RETRIES,
+):
+    """
+    Call `build_fn()` and retry only on JSONSanityError (i.e. malformed
+    JSON from the LLM). Other exceptions propagate immediately.
+
+    Why retry only on JSONSanityError:
+      - JSON malformation is a stochastic LLM failure — same prompt, different
+        seed, usually works. Cheap to retry (Ollama LLM calls cost $0).
+      - Other failures (OllamaError, FileNotFoundError, etc.) are deterministic
+        setup issues that retrying won't fix.
+
+    Args:
+        build_fn: zero-arg callable that does the prompt build
+        scenario_id: for logging
+        step_label: 'Step 1' or 'Step 2' for log messages
+        max_retries: number of retries AFTER the initial attempt
+
+    Returns:
+        Whatever build_fn returns.
+
+    Raises:
+        JSONSanityError: if all attempts fail
+        Any other exception: passed through on first occurrence
+    """
+    from src.json_utils import JSONSanityError
+
+    last_error = None
+    for attempt in range(1, max_retries + 2):  # 1, 2, ..., max_retries+1
+        try:
+            return build_fn()
+        except JSONSanityError as e:
+            last_error = e
+            if attempt <= max_retries:
+                print(
+                    f"[run_ollama] {scenario_id} {step_label}: JSON sanity error "
+                    f"on attempt {attempt}/{max_retries + 1}: {str(e)[:200]}"
+                )
+                print(f"[run_ollama]   retrying same scenario...")
+            else:
+                print(
+                    f"[run_ollama] {scenario_id} {step_label}: all "
+                    f"{max_retries + 1} attempts failed JSON sanity check"
+                )
+    raise last_error
+
+
 def process_scenario(
     scenario: dict,
     output_dir: Path,
@@ -140,9 +198,13 @@ def process_scenario(
         _db.finalize_generation(gen_id, "failed", record["error_message"])
         return record
 
-    # 2. Step 1 prompt (Ollama)
+    # 2. Step 1 prompt (Ollama) — with JSON-failure retry
     try:
-        step_1_output = step_1_prompt_builder_ollama.build_step_1_prompt(scenario)
+        step_1_output = _call_with_json_retry(
+            build_fn=lambda: step_1_prompt_builder_ollama.build_step_1_prompt(scenario),
+            scenario_id=scenario_id,
+            step_label="Step 1",
+        )
     except Exception as e:
         record["final_status"] = "failed"
         record["error_stage"] = "step_1_prompt"
@@ -205,10 +267,14 @@ def process_scenario(
         elapsed_s=step_1_meta.get("elapsed_seconds"),
     )
 
-    # 4. Step 2 prompt (Ollama)
+    # 4. Step 2 prompt (Ollama) — with JSON-failure retry
     try:
-        step_2_output = step_2_prompt_builder_ollama.build_step_2_prompt(
-            scenario, step_1_output
+        step_2_output = _call_with_json_retry(
+            build_fn=lambda: step_2_prompt_builder_ollama.build_step_2_prompt(
+                scenario, step_1_output
+            ),
+            scenario_id=scenario_id,
+            step_label="Step 2",
         )
     except Exception as e:
         record["final_status"] = "failed"
@@ -280,6 +346,7 @@ def process_scenario(
     # 6. chain.html
     # Path math: ollama_flow/outputs/<ts>_<sid>/chain.html
     # → 3 levels up to parent repo root → assets/persona.jpg
+    # (No QC step in Ollama flow — QC lives in the Claude flow only.)
     try:
         trace_html.write_chain_html(
             output_dir, record, persona_rel_path="../../../assets/persona.jpg"
