@@ -1,6 +1,6 @@
 # Alluvi — Final Image Generation Pipeline
 
-End-to-end image generation pipeline that produces premium-looking TikTok ad images for the **Alluvi Tirzepatide 40mg** product. Two-stage architecture, two LLM backends, dynamic prompt generation, automated quality control.
+End-to-end image generation pipeline that produces premium-looking TikTok ad images for the **Alluvi Tirzepatide 40mg** product. Three-stage architecture, two LLM backends, dynamic prompt generation, automated quality control, and a final photoreal refinement pass.
 
 ---
 
@@ -18,17 +18,19 @@ End-to-end image generation pipeline that produces premium-looking TikTok ad ima
 10. [Output directory structure](#output-directory-structure)
 11. [How JSON sanity check + retry works](#how-json-sanity-check--retry-works)
 12. [How QC validation + retry works (Claude flow only)](#how-qc-validation--retry-works-claude-flow-only)
-13. [Cost summary](#cost-summary)
-14. [Troubleshooting](#troubleshooting)
+13. [Stage 3: FLUX.1 Kontext Pro realism pass](#stage-3-flux1-kontext-pro-realism-pass)
+14. [Cost summary](#cost-summary)
+15. [Troubleshooting](#troubleshooting)
 
 ---
 
 ## What this is
 
-A 2-stage image generation system that:
+A 3-stage image generation system that:
 
 - **Stage 1** — Generates a person-in-scene image (persona + outfit + setting, no product yet) using `fal-ai/flux-pulid`. The persona's identity (face) is locked to ~99% fidelity using a reference photo at `assets/persona.jpg`.
 - **Stage 2** — Composites the Alluvi product naturally into her hand (or onto a surface) using `fal-ai/qwen-image-edit-2511`. Single product, correct orientation, no anatomy defects.
+- **Stage 3** — Applies a photoreal refinement pass using `fal-ai/flux-pro/kontext` (FLUX.1 Kontext Pro) — adds natural skin texture, real hair strands, fabric weave, and film grain while preserving composition, identity, and the product's text/packaging exactly.
 
 The text prompt for each stage is generated **dynamically per scenario** by an LLM (Claude Opus 4.7 OR a local Ollama model), using hand-tuned master prompts that encode our quality rules.
 
@@ -36,6 +38,7 @@ The pipeline also includes:
 
 - **JSON sanity check + retry** — catches malformed LLM output and retries the same scenario
 - **QC validation + retry** (Claude flow only) — uses Claude Sonnet 4.6 vision to reject obviously broken images (3 hands, 6 fingers, warped products) and re-run Stage 2 up to 2 times before skipping
+- **Safety-filter handling on Stage 3** — Kontext's NSFW filter is permissive (`safety_tolerance="5"`) plus a defensive black-image detector catches any silent filter triggers
 - **SQLite tracking** — every run, every generation, every retry recorded in `data/alluvi.db`
 - **Per-scenario HTML traces** — `chain.html` shows scenario → Step 1 prompt → persona image → Step 2 prompt → final image side-by-side
 - **Batch overview HTML** — `overview.html` shows all 30 scenarios in one page for visual review
@@ -90,7 +93,7 @@ The pipeline also includes:
   │    + 03_step1_persona.jpg + brand/box_front.jpg         │
   │    →                                                    │
   │    05_step2_final.jpg                                   │
-  │    (final image — persona holding Alluvi product)       │
+  │    (persona holding Alluvi product, AI-ish look)        │
   └─────────────────────────────────────────────────────────┘
          │
          ▼
@@ -109,7 +112,27 @@ The pipeline also includes:
   └─────────────────────────────────────────────────────────┘
          │
          ▼
-   06_qc_result.json + chain.html + DB record
+  ┌─────────────────────────────────────────────────────────┐
+  │ 6. STAGE 3: fal-ai/flux-pro/kontext                     │
+  │    (Claude flow: runs only if QC passed)                │
+  │    (Ollama flow: runs unconditionally — no QC gate)     │
+  │                                                         │
+  │    Instruction-based realism edit:                      │
+  │      - Photoreal skin (pores, vellus hair, no waxy)     │
+  │      - Real hair strands with flyaway pieces            │
+  │      - Visible fabric weave, realistic folds            │
+  │      - Subtle film grain, natural lighting              │
+  │    Preserves composition, identity, product text.       │
+  │                                                         │
+  │    safety_tolerance="5" (max permissive)                │
+  │    + defensive black-image detector                     │
+  │                                                         │
+  │    →                                                    │
+  │    07_step3_realism.jpg  (final image)                  │
+  └─────────────────────────────────────────────────────────┘
+         │
+         ▼
+   chain.html + DB record
 ```
 
 ---
@@ -124,16 +147,18 @@ The pipeline has **two parallel implementations** with different cost/quality tr
 | **Prompt LLM**               | Claude Opus 4.7 (API)             | Local Ollama (default `qwen2.5:7b`)       |
 | **Stage 1 model**            | `fal-ai/flux-pulid`               | `fal-ai/flux-pulid` (same)                |
 | **Stage 2 model**            | `fal-ai/qwen-image-edit-2511`     | `fal-ai/qwen-image-edit-2511` (same)      |
+| **Stage 3 model**            | `fal-ai/flux-pro/kontext`         | `fal-ai/flux-pro/kontext` (same)          |
 | **Prompt cost per scenario** | ~$0.28                            | $0 (local)                                |
-| **fal cost per scenario**    | ~$0.08                            | ~$0.08 (same)                             |
+| **fal cost per scenario**    | ~$0.12 (PuLID + Qwen + Kontext)   | ~$0.12 (same)                             |
 | **JSON sanity check**        | ✅ + 1 retry                       | ✅ + 2 retries                             |
 | **QC validation**            | ✅ Sonnet 4.6 vision               | ❌ none                                    |
 | **QC retry (Stage 2 only)**  | ✅ up to 2 retries → skip          | ❌ none                                    |
-| **Cost per 30-scenario run** | ~$12                              | ~$2.40                                    |
-| **Wall time (30 sequential)**| ~35-55 min                        | ~50-60 min                                |
+| **Stage 3 gating**           | Only if QC passed                 | Always (after Stage 2 success)            |
+| **Cost per 30-scenario run** | ~$13                              | ~$3.60                                    |
+| **Wall time (30 sequential)**| ~50–70 min                        | ~60–80 min                                |
 | **API keys required**        | `FAL_KEY` + `ANTHROPIC_API_KEY`   | `FAL_KEY` only                            |
 
-**Use the Claude flow when** you're producing the actual ad images for downstream video generation. The QC step filters out broken images so only usable ones reach the video pipeline.
+**Use the Claude flow when** you're producing the actual ad images for downstream video generation. The QC step filters out broken images so only usable ones reach Stage 3 (and the video pipeline).
 
 **Use the Ollama flow when** you're iterating on scenarios, master prompts, or testing pipeline changes. No API costs for the LLM portion, faster turnaround, but no quality gate.
 
@@ -175,11 +200,15 @@ Final_Image_generation/
 │   ├── step_1_pulid.py           ← fal PuLID caller
 │   ├── step_2_prompt_builder.py  ← Claude Opus → Step 2 prompt JSON
 │   ├── step_2_qwen_edit.py       ← fal Qwen-Image-Edit caller
+│   ├── step_3_realism.py         ← fal FLUX.1 Kontext Pro caller
 │   ├── trace_html.py             ← chain.html generator
 │   └── overview_html.py          ← overview.html generator (batch view)
 │
 ├── data/                         ← created on first run
 │   └── alluvi.db                 ← SQLite database (runs + generations + retries)
+│
+├── cache/                        ← created on first fal upload
+│   └── fal_uploads.json          ← URL cache to avoid re-uploading same image
 │
 ├── outputs/                      ← created per run
 │   ├── <ts>_<scenario_id>/       ← single-scenario outputs
@@ -247,13 +276,14 @@ pip install -r requirements.txt
 - `anthropic` — Claude API client (used by Claude flow + QC validator)
 - `fal-client` — fal API client (both flows use this for image generation)
 - `httpx` — Ollama HTTP client (used by Ollama flow)
+- `Pillow` — used by Stage 3 for the black-image safety detector
 - `python-dotenv` — `.env` file loader
 - `PyYAML` — config + scenarios parser
 - `requests` — assorted HTTP
 
 Verify the install:
 ```powershell
-python -c "import anthropic, fal_client, httpx, yaml, dotenv; print('all imports ok')"
+python -c "import anthropic, fal_client, httpx, yaml, dotenv, PIL; print('all imports ok')"
 ```
 
 ---
@@ -272,7 +302,7 @@ ANTHROPIC_API_KEY=sk-ant-api03-your-key-here
 ```
 
 Both keys are required for the Claude flow because:
-- `FAL_KEY` → calls PuLID (Stage 1) + Qwen-Image-Edit (Stage 2)
+- `FAL_KEY` → calls PuLID (Stage 1) + Qwen-Image-Edit (Stage 2) + Kontext Pro (Stage 3)
 - `ANTHROPIC_API_KEY` → calls Opus (prompt builds) + Sonnet (QC validation)
 
 ### Ollama flow `.env`
@@ -326,8 +356,8 @@ Run one scenario end-to-end to confirm everything works before spending money on
 python run.py --scenario bedroom_robe_with_product_13
 ```
 
-- Wall time: ~90–120 seconds (best case, QC passes first try)
-- Cost: ~$0.37 best case / ~$0.45 worst case (2 QC retries)
+- Wall time: ~90–130 seconds (best case, QC passes first try)
+- Cost: ~$0.40 best case / ~$0.48 worst case (2 QC retries)
 - Output folder: `outputs\<timestamp>_bedroom_robe_with_product_13\`
 
 To use a different scenario, pick an ID from `scenarios/scenarios.yaml`:
@@ -344,7 +374,7 @@ python run_batch.py --pilot
 ```
 
 - Wall time: ~10–15 minutes
-- Cost: ~$2.00
+- Cost: ~$2.20
 - Output folder: `outputs\<timestamp>_batch\`
 - Open `overview.html` in that folder to see all 5 scenarios side-by-side
 
@@ -356,8 +386,8 @@ When the pilot looks clean:
 python run_batch.py
 ```
 
-- Wall time: ~45–60 minutes
-- Cost: ~$10.80–$13 depending on QC retry rate
+- Wall time: ~50–70 minutes
+- Cost: ~$12–$14 depending on QC retry rate
 - Output folder: `outputs\<timestamp>_batch\`
 - `overview.html` updates mid-batch so you can monitor progress in your browser
 
@@ -377,11 +407,31 @@ python run_batch.py --exclude gym_outdoor_running_22
 python run_batch.py --skip-preflight
 ```
 
+### Stage toggles via environment variables
+
+You can selectively disable QC or Stage 3 for debugging without editing code:
+
+```powershell
+# Skip QC validation (Stage 2 output is always accepted; Stage 3 still runs)
+$env:QC_ENABLED = "false"
+
+# Skip Stage 3 realism pass (final image is 05_step2_final.jpg)
+$env:STEP_3_ENABLED = "false"
+
+# Combine for vanilla 2-stage runs
+$env:QC_ENABLED = "false"
+$env:STEP_3_ENABLED = "false"
+
+# Clear them when done
+Remove-Item Env:QC_ENABLED
+Remove-Item Env:STEP_3_ENABLED
+```
+
 ---
 
 ## Running the Ollama flow (free iteration)
 
-The Ollama flow runs prompt building on your local machine for $0 cost. There is **no QC step** in this flow — you visually inspect the outputs yourself.
+The Ollama flow runs prompt building on your local machine for $0 cost. There is **no QC step** in this flow — you visually inspect the outputs yourself. Stage 3 (Kontext) still runs and adds realism on every successful Stage 2 output.
 
 ### One-time setup: Install Ollama and pull the model
 
@@ -430,8 +480,8 @@ What preflight checks:
 python run_ollama.py --scenario bedroom_robe_with_product_13
 ```
 
-- Wall time: ~60–90 seconds (Ollama is ~5-15s slower per call than Claude API)
-- Cost: ~$0.08 (fal calls only — Ollama is free)
+- Wall time: ~90–130 seconds
+- Cost: ~$0.12 (fal calls only — Ollama is free)
 - Output folder: `ollama_flow\outputs\<timestamp>_bedroom_robe_with_product_13_ollama\`
 
 ### Step 3: Pilot batch (5 scenarios)
@@ -440,8 +490,8 @@ python run_ollama.py --scenario bedroom_robe_with_product_13
 python run_batch_ollama.py --pilot
 ```
 
-- Wall time: ~8–12 minutes
-- Cost: ~$0.40
+- Wall time: ~10–14 minutes
+- Cost: ~$0.60
 - Output folder: `ollama_flow\outputs\<timestamp>_batch_ollama\`
 
 ### Step 4: Full batch (all 30 scenarios)
@@ -450,8 +500,8 @@ python run_batch_ollama.py --pilot
 python run_batch_ollama.py
 ```
 
-- Wall time: ~50–60 minutes
-- Cost: ~$2.40
+- Wall time: ~60–80 minutes
+- Cost: ~$3.60
 - Output folder: `ollama_flow\outputs\<timestamp>_batch_ollama\`
 
 ### Useful batch flags (same as Claude flow)
@@ -462,6 +512,15 @@ python run_batch_ollama.py --only ID1,ID2
 python run_batch_ollama.py --exclude ID3
 python run_batch_ollama.py --skip-preflight
 ```
+
+### Stage toggle for the Ollama flow
+
+```powershell
+# Skip Stage 3 (final image is 05_step2_final.jpg)
+$env:STEP_3_ENABLED = "false"
+```
+
+QC isn't available in the Ollama flow, so `QC_ENABLED` has no effect there.
 
 ---
 
@@ -476,7 +535,7 @@ outputs\<ts>_<scenario_id>\
   ├── 03_step1_persona.jpg              Stage 1 result (PuLID)
   ├── 03_step1_meta.json                fal call metadata for Stage 1
   ├── 04_step2_prompt.json              Opus output for Step 2
-  ├── 05_step2_final.jpg                latest accepted image
+  ├── 05_step2_final.jpg                latest accepted Qwen image
   ├── 05_step2_final_attempt_1.jpg      each Qwen attempt kept
   ├── 05_step2_final_attempt_2.jpg      (only if retried)
   ├── 05_step2_final_attempt_3.jpg      (only if retried twice)
@@ -485,8 +544,12 @@ outputs\<ts>_<scenario_id>\
   ├── 06_qc_result_attempt_2.json
   ├── 06_qc_result_attempt_3.json
   ├── 06_qc_result.json                 final QC verdict + attempts log
+  ├── 07_step3_realism.jpg              Stage 3 result (Kontext) — FINAL
+  ├── 07_step3_meta.json                fal call metadata for Stage 3
   └── chain.html                        open in browser to review
 ```
+
+**The final image is `07_step3_realism.jpg`** if Stage 3 ran successfully (QC passed + Kontext succeeded). If Stage 3 was disabled or failed, the final is `05_step2_final.jpg`. The `record["final_image_path"]` field in the DB and chain.html always points to whichever is canonical.
 
 ### Single scenario (Ollama flow)
 
@@ -497,8 +560,10 @@ ollama_flow\outputs\<ts>_<scenario_id>_ollama\
   ├── 03_step1_persona.jpg
   ├── 03_step1_meta.json
   ├── 04_step2_prompt.json              Ollama output for Step 2
-  ├── 05_step2_final.jpg                single attempt — no retry
+  ├── 05_step2_final.jpg                single Qwen attempt — no retry
   ├── 05_step2_meta.json
+  ├── 07_step3_realism.jpg              Stage 3 result (Kontext) — FINAL
+  ├── 07_step3_meta.json
   └── chain.html
 ```
 
@@ -575,7 +640,7 @@ Retry triggered:
 
 ## How QC validation + retry works (Claude flow only)
 
-After Stage 2 produces the final image, the Claude flow runs an automated quality check using Claude Sonnet 4.6 vision. The Ollama flow does NOT run QC — that flow is for iteration only.
+After Stage 2 produces the Qwen image, the Claude flow runs an automated quality check using Claude Sonnet 4.6 vision. The Ollama flow does NOT run QC — that flow is for iteration only.
 
 ### The QC rubric (lenient mode)
 
@@ -608,7 +673,11 @@ When QC fails, the pipeline re-runs **only Stage 2** (Qwen-Image-Edit) using the
 | 2       | Qwen      | Retry once more          |
 | 3       | Qwen      | **Skip scenario**, mark `qc_failed` in DB |
 
-After all 3 attempts fail, the scenario gets `final_status = qc_failed` in the database. The batch continues to the next scenario. The skipped scenario is NOT eligible for the video generation pipeline downstream.
+After all 3 attempts fail, the scenario gets `final_status = qc_failed` in the database. The batch continues to the next scenario. The skipped scenario is NOT eligible for Stage 3 or for the video generation pipeline downstream.
+
+### Why QC gates Stage 3 (Claude flow only)
+
+Stage 3 (Kontext) costs ~$0.04 per call. There's no point spending that on an image with 6 fingers or a warped product — the realism pass cannot fix anatomy defects. So the Claude flow only runs Stage 3 on QC-passed images. In the Ollama flow there's no QC, so Stage 3 runs on every successful Stage 2 output regardless of quality.
 
 ### What you'll see in the terminal
 
@@ -657,7 +726,67 @@ $env:QC_ENABLED = "false"
 python run.py --scenario bedroom_robe_with_product_13
 ```
 
-When QC is disabled, the first Qwen attempt is always accepted and saved as `05_step2_final.jpg`.
+When QC is disabled, the first Qwen attempt is always accepted, saved as `05_step2_final.jpg`, and passed to Stage 3.
+
+---
+
+## Stage 3: FLUX.1 Kontext Pro realism pass
+
+Stage 3 takes the Qwen output (which has a slightly artificial/AI-looking aesthetic) and runs it through FLUX.1 Kontext Pro to add photoreal texture while preserving the composition, identity, and product packaging exactly.
+
+### Why FLUX.1 Kontext Pro (not img2img)
+
+Standard image-to-image refinement (e.g. `fal-ai/flux/dev/image-to-image`) drifts text and small details at any denoise strength > 0 because text is high-frequency information that the model nudges toward "what text usually looks like" during each denoise step. This caused the Alluvi packaging text to shift in early experiments ("ALLUVI" → "ALUUVI").
+
+FLUX.1 Kontext is an **instruction-based** editor (rather than a denoise-based regenerator). It reads the image AND understands what you want to change vs preserve. The prompt is written as a surgical instruction ("make the skin look natural, keep the product packaging unchanged") rather than a full-scene description. Black Forest Labs designed it specifically for typography preservation and character consistency.
+
+### What Stage 3 actually does
+
+The default instruction prompt (in `src/step_3_realism.py`) tells Kontext to:
+
+**Transform:**
+- Skin → hyper-realistic with prominent visible pores, fine vellus facial hair, natural under-eye softness, subsurface scattering, slight redness in cheeks and ears, micro-imperfections, NOT smooth and NOT waxy
+- Hair → individual strands clearly visible with natural flyaway pieces, realistic shine and shadow, NOT a smooth mass
+- Fabric → visible weave, realistic folds, natural texture variations
+- Lighting → real-world directional light with natural falloff and ambient occlusion in corners
+- Film characteristics → subtle grain, slight chromatic aberration at edges, natural color depth
+
+**Preserve unchanged:**
+- The exact composition, pose, and framing
+- Facial identity and features
+- Product packaging and all its text/labels/colors/layout
+- Outfit and background
+- Lighting direction and color temperature
+
+To tune realism strength, edit `DEFAULT_REALISM_INSTRUCTION` at the top of `src/step_3_realism.py`. Stronger language ("aggressively", "hyper-realistic") pushes more transformation. Softer language ("subtle", "gently refine") preserves more of the input.
+
+### Safety filter handling (important)
+
+Kontext has a content safety filter that defaults to `safety_tolerance="2"` (very strict). On content that shows visible skin (cleavage, midriff, bra, swimwear) the filter **silently returns an all-black image** instead of refusing — there's no error raised by the API. If you only check the response status code, you don't know the image is garbage.
+
+Two defenses are built into `src/step_3_realism.py`:
+
+1. **Permissive setting**: we always pass `safety_tolerance="5"` (the documented maximum) so the filter accepts our typical robe/loungewear ad content.
+
+2. **Black-image detector**: after downloading the result, we sample the mean pixel value of a 64×64 luminance thumbnail. If the mean is below 5 (effectively all-black), we raise a `RuntimeError` with diagnostic info. This means:
+   - The Claude flow's per-scenario `try/except` catches it as a Stage 3 failure → falls back to using `05_step2_final.jpg` as the final
+   - The Ollama flow does the same fallback
+   - You'll see a clear error in the terminal instead of a black `07_step3_realism.jpg` silently overwriting the chain
+
+### Kontext Pro vs Kontext Max
+
+We use Kontext **Pro** (`fal-ai/flux-pro/kontext`), not Max (`fal-ai/flux-pro/kontext/max`). In testing, Max's safety filter triggered probabilistically even at `safety_tolerance="5"` — meaning some scenarios would silently produce black images on some seeds. Pro is more permissive at the same tolerance setting and reliably passes our content. Max also costs roughly 2× more (~$0.08 vs $0.04 per image) without delivering visibly stronger edits for our use case.
+
+### Disabling Stage 3
+
+If you want to skip Stage 3 entirely (debugging, comparing with/without realism pass, or if a particular scenario keeps tripping the safety filter):
+
+```powershell
+$env:STEP_3_ENABLED = "false"
+python run.py --scenario bedroom_robe_with_product_13
+```
+
+When Stage 3 is disabled, `05_step2_final.jpg` becomes the canonical final image — no `07_step3_realism.jpg` is produced.
 
 ---
 
@@ -665,21 +794,38 @@ When QC is disabled, the first Qwen attempt is always accepted and saved as `05_
 
 Per-scenario costs (approximate, depend on prompt length + retry rate):
 
-| Flow   | Prompt LLM | Stage 1 (PuLID) | Stage 2 (Qwen) | QC      | Total best | Total worst (max retries) |
-|--------|------------|-----------------|----------------|---------|------------|---------------------------|
-| Claude | ~$0.28     | ~$0.04          | ~$0.04         | ~$0.01  | ~$0.37     | ~$0.45 (3 Qwen attempts)  |
-| Ollama | $0         | ~$0.04          | ~$0.04         | $0      | ~$0.08     | ~$0.08 (no QC retry)      |
+| Flow   | Prompt LLM | Stage 1 (PuLID) | Stage 2 (Qwen) | QC      | Stage 3 (Kontext) | Total best | Total worst (max retries) |
+|--------|------------|-----------------|----------------|---------|-------------------|------------|---------------------------|
+| Claude | ~$0.28     | ~$0.04          | ~$0.04         | ~$0.01  | ~$0.04            | ~$0.41     | ~$0.48 (3 Qwen attempts)  |
+| Ollama | $0         | ~$0.04          | ~$0.04         | $0      | ~$0.04            | ~$0.12     | ~$0.12 (no QC retry)      |
 
 Per-batch costs (30 scenarios):
 
 | Flow   | Cost range  | Wall time  |
 |--------|-------------|------------|
-| Claude | $11 – $14   | 45–60 min  |
-| Ollama | ~$2.40      | 50–60 min  |
+| Claude | $12 – $15   | 50–70 min  |
+| Ollama | ~$3.60      | 60–80 min  |
 
 ---
 
 ## Troubleshooting
+
+### `07_step3_realism.jpg` is all black
+
+This is the Kontext safety filter triggering — the filter returns black bytes instead of an error. With our defenses (`safety_tolerance="5"` + the black-image detector) this should be caught automatically: you'll see a `RuntimeError: Kontext returned an all-black image...` and the pipeline falls back to `05_step2_final.jpg` as the final.
+
+If you're still seeing black `07_step3_realism.jpg` files written to disk, your `src/step_3_realism.py` is out of date. Make sure it has both:
+- `DEFAULT_SAFETY_TOLERANCE = "5"` (passed as `safety_tolerance` in the API call)
+- The `_check_not_all_black()` function called right after downloading the image
+
+If a particular scenario keeps tripping the filter even at tolerance 5 (e.g. very heavy skin exposure in a gym/beach scene), the workarounds are:
+- Edit the scenario in `scenarios.yaml` to use more covering clothing
+- Disable Stage 3 for that scenario: `$env:STEP_3_ENABLED = "false"`
+- Switch to `fal-ai/flux-kontext/dev` in `src/step_3_realism.py` (open-weights, sometimes lighter safety)
+
+### Stage 3 elapsed time is much longer than 15–20s
+
+Normal Kontext Pro response time is 10–25s. If you see 35–45s elapsed, the safety filter is probably triggering and adding post-processing time. Check the resulting `07_step3_realism.jpg` — if it's black, see the section above.
 
 ### `ImportError: cannot import name 'db' from 'src'` (Ollama flow)
 
@@ -701,6 +847,13 @@ ollama pull qwen2.5:7b
 ```
 Or whichever model you set in `OLLAMA_MODEL`.
 
+### `ModuleNotFoundError: No module named 'PIL'`
+
+Pillow isn't installed. It's required for the Stage 3 black-image detector:
+```powershell
+pip install Pillow>=10.0.0
+```
+
 ### `RuntimeError: ANTHROPIC_API_KEY missing`
 
 Either you're running the Claude flow without an Anthropic key, or you're trying to run QC. Add `ANTHROPIC_API_KEY=sk-ant-...` to your `.env` file, or disable QC with `$env:QC_ENABLED = "false"`.
@@ -716,7 +869,7 @@ This is a real signal — Qwen-Image-Edit can't reliably handle that particular 
 - Increase the Qwen guidance scale in `config.yaml`
 - Switch to a different scenario from the 30
 
-### "all 30 attempts failed JSON sanity check" with Ollama
+### "all 3 attempts failed JSON sanity check" with Ollama
 
 Your local model is producing malformed output consistently. Try:
 - A larger model: `ollama pull llama3.1:8b` then set `OLLAMA_MODEL=llama3.1:8b`
@@ -736,6 +889,13 @@ Each batch creates a timestamped folder under `outputs/`. Delete old runs period
 ```powershell
 # Keep only the 5 most recent batches
 Get-ChildItem outputs\*_batch\ | Sort-Object LastWriteTime -Descending | Select-Object -Skip 5 | Remove-Item -Recurse
+```
+
+### `cache/fal_uploads.json` is growing large
+
+This is the fal upload URL cache (keyed by absolute file path) — it lets us avoid re-uploading the same `assets/persona.jpg` or `brand/box_front.jpg` on every scenario. Safe to delete if it gets too big; it'll be re-created on next run:
+```powershell
+Remove-Item cache\fal_uploads.json
 ```
 
 ---

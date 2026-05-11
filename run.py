@@ -10,11 +10,12 @@ db.py for SQLite state tracking):
   3. Call fal-ai/flux-pulid → 03_step1_persona.jpg (persona in scene)
   4. Call Opus 4.7 with master_prompt_step2_qwen.md → Step 2 prompt envelope
   5. Call fal-ai/qwen-image-edit-2511 → 05_step2_final.jpg (product composited)
-  6. Write all artifacts + chain.html
-  7. Persist run + generation rows in data/alluvi.db
+  6. QC validation (Sonnet 4.6 vision) with up to 2 Stage 2 retries
+  7. Call fal-ai/flux-pro/kontext → 07_step3_realism.jpg (photoreal pass, if QC passed)
+  8. Write chain.html + persist run + generation rows in data/alluvi.db
 
-Cost: ~$0.36 per scenario.
-Wall time: ~60-80s.
+Cost: ~$0.40 per scenario.
+Wall time: ~90-120s.
 
 Usage (from repo root):
     python run.py --scenario bedroom_robe_with_product_13
@@ -112,7 +113,7 @@ def process_scenario(
     and `error_message` populated on failure.
 
     Stages tracked (matches production):
-      scenario_save / step_1_prompt / step_1_pulid / step_2_prompt / step_2_qwen
+      scenario_save / step_1_prompt / step_1_pulid / step_2_prompt / step_2_qwen / qc / step_3_realism
 
     DB state is written incrementally at every stage transition, so even on
     crash you have a partial trail in data/alluvi.db.
@@ -435,7 +436,58 @@ def process_scenario(
         except Exception as e:
             print(f"[run] {scenario_id}: QC db update failed (non-fatal): {e}")
 
-    # 7. chain.html — single-scenario layout: outputs/<ts>_<sid>/chain.html
+    # ─── 7. Stage 3: realism refinement pass (only if QC passed) ────────
+    # FLUX.1 Kontext Pro instruction-based editing adds photoreal texture
+    # while preserving composition, identity, and product text.
+    # Skipped if QC failed (no point refining a broken image).
+    # Skipped if STEP_3_ENABLED=false. Non-fatal on error — Step 2 output
+    # remains the canonical final image in that case.
+    step_3_enabled = os.getenv("STEP_3_ENABLED", "true").lower() == "true"
+    qc_passed = bool(final_qc_result and final_qc_result.get("passed"))
+
+    if step_3_enabled and qc_passed:
+        try:
+            from src import step_3_realism
+
+            step_3_out_path = output_dir / "07_step3_realism.jpg"
+            # Pull lighting hint from the scenario for consistency with the
+            # intended scene lighting (helps Kontext preserve mood).
+            lighting_hint = (scenario.get("lighting") or "").strip() or None
+
+            step_3_meta = step_3_realism.generate(
+                step_2_local_path=str(final_out_path),
+                out_path=step_3_out_path,
+                scenario_id=scenario_id,
+                extra_lighting_hint=lighting_hint,
+            )
+            (output_dir / "07_step3_meta.json").write_text(
+                json.dumps(step_3_meta, indent=2, ensure_ascii=False),
+                encoding="utf-8",
+            )
+            record["step_3_meta"] = step_3_meta
+            record["final_image_path"] = str(step_3_out_path)
+            print(
+                f"[run] {scenario_id}: Stage 3 realism pass complete → "
+                f"07_step3_realism.jpg"
+            )
+        except Exception as e:
+            print(
+                f"[run] {scenario_id}: Stage 3 realism pass failed "
+                f"(non-fatal — falling back to Step 2 output): "
+                f"{type(e).__name__}: {e}"
+            )
+            traceback.print_exc()
+            record["step_3_meta"] = {"error": str(e)}
+            record["final_image_path"] = str(final_out_path)
+    else:
+        # Step 3 skipped: either disabled, or QC failed
+        record["final_image_path"] = str(final_out_path)
+        if not step_3_enabled:
+            print(f"[run] {scenario_id}: Stage 3 disabled (STEP_3_ENABLED=false)")
+        elif not qc_passed:
+            print(f"[run] {scenario_id}: Stage 3 skipped (QC did not pass)")
+
+    # 8. chain.html — single-scenario layout: outputs/<ts>_<sid>/chain.html
     # → 2 levels up to repo root → assets/persona.jpg
     try:
         trace_html.write_chain_html(
@@ -450,7 +502,7 @@ def process_scenario(
 def main() -> int:
     parser = argparse.ArgumentParser(
         description=(
-            "Run the full Alluvi image generation pipeline (PuLID + Qwen) "
+            "Run the full Alluvi image generation pipeline (PuLID + Qwen + Kontext) "
             "for one scenario."
         )
     )
@@ -512,10 +564,13 @@ def main() -> int:
     final_status = record.get("final_status")
     step_1_meta = record.get("step_1_meta") or {}
     step_2_meta = record.get("step_2_meta") or {}
+    step_3_meta = record.get("step_3_meta") or {}
 
     # Calculate actual cost for this single-scenario run
     actual_cost = float(step_1_meta.get("cost_usd") or 0.0)
     actual_cost += float(step_2_meta.get("cost_usd") or 0.0)
+    if isinstance(step_3_meta, dict) and not step_3_meta.get("error"):
+        actual_cost += float(step_3_meta.get("cost_usd") or 0.0)
     # Add Opus prompt costs (configured estimates, not metered)
     c_opus_1 = config.get("step_1", {}).get("cost_per_prompt_opus_usd", 0.10)
     c_opus_2 = config.get("step_2", {}).get("cost_per_prompt_opus_usd", 0.18)
@@ -547,8 +602,11 @@ def main() -> int:
     if final_status == "success":
         s1_t = step_1_meta.get("elapsed_seconds", 0)
         s2_t = step_2_meta.get("elapsed_seconds", 0)
+        s3_t = step_3_meta.get("elapsed_seconds", 0) if isinstance(step_3_meta, dict) else 0
         print(f"  step 1:     {s1_t:.1f}s (PuLID)")
         print(f"  step 2:     {s2_t:.1f}s (Qwen)")
+        if s3_t:
+            print(f"  step 3:     {s3_t:.1f}s (Kontext)")
         print(f"  cost:       ${actual_cost:.3f}")
         qc = record.get("qc_result") or {}
         if qc:

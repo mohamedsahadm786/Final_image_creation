@@ -10,8 +10,8 @@ Replicates the production run.py's per-scenario flow but:
   - Reads ollama_flow/config.yaml (separate from parent's config.yaml)
   - PLAN_LABEL='pulid_qwen_tuned_ollama' so DB rows are distinguishable
 
-Cost: ~$0.08 per scenario (fal API only, no LLM cost).
-Wall time: ~80-120s per scenario.
+Cost: ~$0.12 per scenario (fal API only, no LLM cost). 
+Wall time: ~90-130s per scenario.
 
 Usage (from inside ollama_flow/):
     python run_ollama.py --scenario bedroom_robe_with_product_13
@@ -27,6 +27,7 @@ Why the local Ollama package is named `ollama_src` (not `src`):
 
 import argparse
 import json
+import os
 import sys
 import time
 import traceback
@@ -343,7 +344,52 @@ def process_scenario(
     record["error_message"] = None
     _db.finalize_generation(gen_id, "success")
 
-    # 6. chain.html
+    # ─── 6. Stage 3: realism refinement pass ────────────────────────────
+    # FLUX.1 Kontext Pro instruction-based editing adds photoreal texture
+    # while preserving composition, identity, and product text. In the
+    # Ollama flow there's no QC gate, so this runs unconditionally after
+    # every successful Step 2.
+    # Skipped if STEP_3_ENABLED=false. Non-fatal on error — Step 2 output
+    # remains the canonical final image in that case.
+    step_3_enabled = os.getenv("STEP_3_ENABLED", "true").lower() == "true"
+
+    if step_3_enabled:
+        try:
+            from src import step_3_realism
+
+            step_3_out_path = output_dir / "07_step3_realism.jpg"
+            lighting_hint = (scenario.get("lighting") or "").strip() or None
+
+            step_3_meta = step_3_realism.generate(
+                step_2_local_path=str(final_out_path),
+                out_path=step_3_out_path,
+                scenario_id=scenario_id,
+                extra_lighting_hint=lighting_hint,
+            )
+            (output_dir / "07_step3_meta.json").write_text(
+                json.dumps(step_3_meta, indent=2, ensure_ascii=False),
+                encoding="utf-8",
+            )
+            record["step_3_meta"] = step_3_meta
+            record["final_image_path"] = str(step_3_out_path)
+            print(
+                f"[run_ollama] {scenario_id}: Stage 3 realism pass complete → "
+                f"07_step3_realism.jpg"
+            )
+        except Exception as e:
+            print(
+                f"[run_ollama] {scenario_id}: Stage 3 realism pass failed "
+                f"(non-fatal — falling back to Step 2 output): "
+                f"{type(e).__name__}: {e}"
+            )
+            traceback.print_exc()
+            record["step_3_meta"] = {"error": str(e)}
+            record["final_image_path"] = str(final_out_path)
+    else:
+        record["final_image_path"] = str(final_out_path)
+        print(f"[run_ollama] {scenario_id}: Stage 3 disabled (STEP_3_ENABLED=false)")
+
+    # 7. chain.html
     # Path math: ollama_flow/outputs/<ts>_<sid>/chain.html
     # → 3 levels up to parent repo root → assets/persona.jpg
     # (No QC step in Ollama flow — QC lives in the Claude flow only.)
@@ -420,9 +466,12 @@ def main() -> int:
     final_status = record.get("final_status")
     step_1_meta = record.get("step_1_meta") or {}
     step_2_meta = record.get("step_2_meta") or {}
+    step_3_meta = record.get("step_3_meta") or {}
 
     actual_cost = float(step_1_meta.get("cost_usd") or 0.0)
     actual_cost += float(step_2_meta.get("cost_usd") or 0.0)
+    if isinstance(step_3_meta, dict) and not step_3_meta.get("error"):
+        actual_cost += float(step_3_meta.get("cost_usd") or 0.0)
     # No Opus cost in Ollama mode
 
     try:
@@ -447,8 +496,11 @@ def main() -> int:
     if final_status == "success":
         s1_t = step_1_meta.get("elapsed_seconds", 0)
         s2_t = step_2_meta.get("elapsed_seconds", 0)
+        s3_t = step_3_meta.get("elapsed_seconds", 0) if isinstance(step_3_meta, dict) else 0
         print(f"  step 1:     {s1_t:.1f}s (PuLID)")
         print(f"  step 2:     {s2_t:.1f}s (Qwen)")
+        if s3_t:
+            print(f"  step 3:     {s3_t:.1f}s (Kontext)")
         print(f"  cost:       ${actual_cost:.3f}  (fal only, LLM was free via Ollama)")
     else:
         print(f"  error stage:   {record.get('error_stage')}")
