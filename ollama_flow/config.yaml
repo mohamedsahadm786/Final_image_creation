@@ -1,0 +1,52 @@
+# ollama_flow/config.yaml — Ollama-mode config
+#
+# Same image-generation parameters as the production config (Final_Image_generation/
+# config.yaml). The only differences are:
+#   - cost numbers: $0 for LLM calls (Ollama is local/free)
+#   - DB path:      ollama_flow/data/alluvi_ollama.db
+#                   (kept separate from the production alluvi.db so iteration
+#                    runs don't pollute production evaluation queries)
+#   - output path:  ollama_flow/outputs/
+#                   (kept separate from the production outputs/ folder)
+#
+# All other params (image_size, num_inference_steps, id_weight, true_cfg,
+# guidance_scale, max_sequence_length, num_images, output_format, etc.)
+# match production so the only varying factor is the LLM building the prompt.
+
+pipeline_name: alluvi_ollama_iteration
+model_label: "PuLID + Qwen-Image-Edit-2511 (Ollama-built prompts)"
+
+# Per-scenario cost — Ollama LLM calls are free, only fal costs apply
+cost_per_scenario_usd: 0.08      # = pulid ($0.04) + qwen ($0.04). No Opus.
+
+step_1:
+  endpoint: fal-ai/flux-pulid
+  cost_per_image_usd: 0.04       # PuLID API call
+  cost_per_prompt_opus_usd: 0.00 # Ollama is free
+
+  # Defaults — overridden per-scenario by Ollama-emitted fal_pulid_params
+  defaults:
+    image_size:
+      width: 768
+      height: 1344
+    num_inference_steps: 30
+    guidance_scale: 3.5
+    id_weight: 1.0
+    true_cfg: 1.5
+    max_sequence_length: "256"
+    enable_safety_checker: true
+    output_format: "jpeg"
+    num_images: 1
+
+step_2:
+  endpoint: fal-ai/qwen-image-edit-2511
+  cost_per_image_usd: 0.04       # Qwen API call
+  cost_per_prompt_opus_usd: 0.00 # Ollama is free
+
+  defaults:
+    image_size:
+      width: 768
+      height: 1344
+    num_images: 1
+    output_format: "png"
+    enable_safety_checker: true

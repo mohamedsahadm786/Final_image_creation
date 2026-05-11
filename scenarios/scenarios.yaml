@@ -1,0 +1,1539 @@
+# ════════════════════════════════════════════════════════════════════════════
+# scenarios.yaml — Alluvi v2 Hand-Curated Scenario Library
+# ════════════════════════════════════════════════════════════════════════════
+#
+# 30 hand-curated scenarios. Each one is a complete director's brief for one
+# UGC-style ad image. Each entry carries everything the prompt builder needs:
+# scene, outfit, pose, grip, lighting, mood, framing, camera height.
+#
+# ─── DESIGN PRINCIPLES ────────────────────────────────────────────────────
+# 1. EVERY scenario has the persona in frame WITH the product visible.
+#    These images are frame-1 of ad videos — both elements must be present.
+# 2. OUTFIT VARIES across all 30 — never repeat. This is the architectural
+#    fix for the same-white-sportsbra problem we hit in Phase 1.
+# 3. PERSONA stays locked — same face, body type, hair color/length/texture
+#    across every scenario. Read from persona.yaml. Never described here.
+# 4. SCENE diversity — gym, pilates, bedroom, kitchen, bathroom, outdoor,
+#    recovery, office, cafe, yoga, travel. No two scenes use the exact
+#    same room.
+# 5. POSE diversity — held high, held low, placed on surface, with phone,
+#    without phone, three-quarter, full-body, close-up, overhead.
+#
+# ─── HOW THE PIPELINE USES THIS FILE ──────────────────────────────────────
+# Step 1 prompt builder reads:  scene, outfit, pose, hand_assignment,
+#                                lighting, mood, palette, framing, camera_height
+# Step 2 prompt builder reads:  product placement intent (grip_or_placement),
+#                                lighting (to lock the lighting hook),
+#                                framing (to keep product in correct position)
+# Both builders read:           id, category, archetype, difficulty
+# Both builders ignore:         resolves_failure_modes (notes for humans)
+#
+# ─── ARCHETYPES (4 types — all persona-present) ───────────────────────────
+# held_product_high    — product held at chest / face level, prominently visible
+# held_product_low     — product held at hip / waist level, casually
+# held_with_phone      — mirror selfie with phone in one hand, product in other
+# placed_on_surface    — product on a counter / shelf / table near the persona;
+#                        persona clearly visible in frame
+#
+# Note: scenario_loader.py still supports flat_lay and object_in_lineup
+# archetypes for future flexibility, but the current scenarios.yaml uses
+# only the four persona-present archetypes above.
+#
+# ─── DIFFICULTY ───────────────────────────────────────────────────────────
+# easy    — single-surface placement, low compositing risk
+# medium  — single hand placement, full-body or three-quarter framing
+# hard    — mirror selfie with phone, close-up face, multi-element scenes
+#
+# ─── DISTRIBUTION (30 total) ──────────────────────────────────────────────
+# Gym                   : 4    (2 medium / 2 hard)
+# Pilates studio        : 4    (1 medium / 1 hard / 2 medium)
+# Bedroom morning       : 4    (1 medium / 1 hard / 1 medium / 1 medium)
+# Kitchen               : 4    (2 medium / 1 medium / 1 hard)
+# Bathroom              : 3    (1 medium / 1 medium / 1 hard)
+# Recovery / rest       : 3    (1 medium / 1 medium / 1 medium)
+# Outdoor lifestyle     : 4    (1 medium / 1 medium / 1 easy / 1 medium)
+# Office (NEW)          : 1    (1 medium)
+# Cafe (NEW)            : 1    (1 medium)
+# Yoga (NEW)            : 1    (1 hard)
+# Travel (NEW)          : 1    (1 medium)
+# ════════════════════════════════════════════════════════════════════════════
+
+version: 2
+last_updated: 2026-05-11
+
+scenarios:
+
+  # ════════════════════════════════════════════════════════════════════════
+  # GYM (4 scenarios)
+  # ════════════════════════════════════════════════════════════════════════
+
+  - id: gym_post_workout_mirror_01
+    category: gym
+    archetype: held_with_phone
+    difficulty: hard
+    scene: >-
+      Modern commercial gym, large floor-to-ceiling mirror wall, treadmills and
+      cable machines softly out of focus behind her, large windows in the
+      background letting in late-afternoon golden-hour light. Polished concrete
+      floor.
+    outfit: >-
+      Matte black ribbed seamless sports bra with thin straps, matching
+      high-waist seamless black leggings, low-cut black ankle socks just visible
+      above the leggings, no shoes (gym mirror selfie style). Hair pulled into a
+      slick high ponytail with a few face-framing pieces left out. Small gold
+      huggie hoops. Minimal no-makeup makeup with a touch of gloss.
+    pose: >-
+      Standing facing the mirror at a slight three-quarter angle, weight on her
+      right hip, left foot slightly forward, posture relaxed and confident, soft
+      smile.
+    hand_assignment:
+      phone_hand: left
+      product_hand: right
+      other_hand: left (holds phone)
+      other_hand_does: holds phone at face level capturing the mirror reflection
+    grip_or_placement: >-
+      Right hand at upper-chest level, thumb on the front face of the box near
+      the top edge, index and middle fingers on the back of the box, ring and
+      pinky tucked under, box angled forty-five degrees toward the mirror so the
+      front face is clearly visible.
+    lighting: >-
+      Mixed gym lighting — cool overhead fluorescents combined with warm window
+      backlight from late-afternoon sun streaming in behind her. Subtle rim light
+      on her shoulders and hair, neutral light on the box surface with a warm
+      window-side rim.
+    mood: post-workout earned, slightly winded, composed
+    palette: bone white, concrete grey, warm window glow, charcoal black
+    framing: medium full (mid-thigh up)
+    camera_height: chest level
+    resolves_failure_modes:
+      - "phone+product hand confusion (Phase 1 image 3)"
+      - "stamped product without grip mechanics (Phase 1 image 1)"
+    notes: >-
+      Hardest scenario in the gym set — explicit two-hand assignment is critical.
+      The mirror reflection means the product front face must point toward the
+      mirror, not toward the camera directly.
+
+  - id: gym_treadmill_water_break_02
+    category: gym
+    archetype: held_product_low
+    difficulty: medium
+    scene: >-
+      Quiet corner of a premium gym, single treadmill stationary in the
+      background, soft natural daylight from a side window. Polished wood floor
+      area, a folded white gym towel draped over the treadmill handlebar.
+    outfit: >-
+      Sage green long-sleeve cropped athletic pullover with thumbholes, matching
+      sage green high-waist leggings, white minimalist running sneakers, a thin
+      gold chain necklace barely visible at the collarbone. Hair in a low loose
+      ponytail.
+    pose: >-
+      Standing beside the treadmill, body angled three-quarters toward the
+      camera, one hand resting on the treadmill handlebar, weight on her left
+      leg.
+    hand_assignment:
+      phone_hand: null
+      product_hand: right
+      other_hand: left
+      other_hand_does: rests lightly on the treadmill handlebar
+    grip_or_placement: >-
+      Right hand at hip level, palm facing slightly upward, the box held in
+      a relaxed pinch grip — thumb on top edge, four fingers underneath the
+      bottom face, the box held flat horizontally with the front face angled
+      slightly toward the camera.
+    lighting: >-
+      Soft natural daylight from a side window on her left, cool with subtle
+      warm undertone, neutral wash on the box surface.
+    mood: composed mid-workout pause
+    palette: sage green, polished wood warm tone, soft daylight white
+    framing: three-quarter (knee up)
+    camera_height: chest level
+    resolves_failure_modes:
+      - "stamped product floating without natural grip"
+    notes: >-
+      Medium difficulty — single hand product, no phone. Tests natural casual
+      grip rendering.
+
+  - id: gym_weights_area_cooldown_03
+    category: gym
+    archetype: placed_on_surface
+    difficulty: medium
+    scene: >-
+      Weights area of a premium gym, dumbbell rack in soft focus behind, black
+      rubber flooring, a lifting bench in the foreground. Industrial pendant
+      lighting overhead. Dark exposed-brick wall on the right.
+    outfit: >-
+      Deep burgundy cropped tank top, matching burgundy bike shorts with a
+      double-band waistband, cropped white socks, white minimalist trainers.
+      Hair tied in a messy bun on top of her head, a few pieces falling around
+      her face. Small silver studs.
+    pose: >-
+      Sitting on the lifting bench, knees apart, leaning slightly forward with
+      her forearms resting on her thighs, looking off-camera to the side as if
+      catching her breath after a set.
+    hand_assignment:
+      phone_hand: null
+      product_hand: null
+      other_hand: both
+      other_hand_does: both arms rest forward on her thighs
+    grip_or_placement: >-
+      The Alluvi box sits on the lifting bench beside her right thigh, front
+      face angled toward the camera, a stainless steel water bottle next to it,
+      a small folded grey gym towel beside both. Product is the foreground hero.
+    lighting: >-
+      Warm overhead industrial pendant light slightly behind her, creating a
+      soft warm rim on her shoulders and hair, with cooler ambient fill from the
+      gym ceiling. Warm glow on the box's front face.
+    mood: post-set quiet recovery
+    palette: deep burgundy, charcoal black, warm pendant amber, polished concrete grey
+    framing: three-quarter (waist up, with bench surface visible to the right)
+    camera_height: slightly below her eye line, looking up
+    resolves_failure_modes:
+      - "low feasibility pose pivot — placement on surface instead of held"
+    notes: >-
+      Tests product-on-surface composition. Product is hero of the surface
+      arrangement, persona is contextual.
+
+  - id: gym_locker_room_finish_04
+    category: gym
+    archetype: held_product_high
+    difficulty: medium
+    scene: >-
+      Premium gym locker room, light wood lockers behind her, a long wooden
+      bench in the foreground, a folded white gym towel and a small leather
+      duffel bag visible on the bench. Soft warm sconce lighting on the wall
+      behind.
+    outfit: >-
+      Heather grey oversized cropped sweatshirt over a black sports bra (sports
+      bra strap visible at the neckline), matching heather grey wide-leg sweat
+      pants pooling slightly at her ankles, white slip-on sneakers. Damp hair
+      down with the front pieces twisted back loosely behind her ears. Bare
+      face, no jewelry except a single thin gold chain.
+    pose: >-
+      Standing beside the bench, body angled three-quarters toward the camera,
+      one foot slightly raised on the bench, looking down at the box in her
+      hand with a soft satisfied half-smile.
+    hand_assignment:
+      phone_hand: null
+      product_hand: right
+      other_hand: left
+      other_hand_does: tucks her damp hair behind her left ear
+    grip_or_placement: >-
+      Right hand at chest level, thumb on the front face of the box, index and
+      middle fingers wrapping around the right side, ring and pinky tucked
+      under the bottom edge, box held vertically with the long side oriented
+      vertically and the front face turned to the camera.
+    lighting: >-
+      Warm sconce lighting from behind, soft overhead lockerroom light, a
+      gentle golden cast across the wood lockers and warm tones on the box
+      surface.
+    mood: post-shower satisfied, end-of-workout calm
+    palette: warm wood, heather grey, cream towel, soft amber
+    framing: three-quarter (waist up)
+    camera_height: chest level
+    resolves_failure_modes:
+      - "outfit lock from persona.jpg — explicit oversized post-workout outfit unlike persona reference"
+    notes: >-
+      Outfit is deliberately layered and oversized — the opposite of her
+      reference photo's tight white set. Tests outfit override capability.
+
+
+  # ════════════════════════════════════════════════════════════════════════
+  # OFFICE (1 scenario — NEW category)
+  # ════════════════════════════════════════════════════════════════════════
+
+  - id: office_desk_midday_05
+    category: office
+    archetype: placed_on_surface
+    difficulty: medium
+    scene: >-
+      Sleek modern home office, light walnut wood desk against a soft cream
+      wall, an open silver laptop slightly turned away from camera, a small
+      ceramic mug of black coffee on a marble coaster, a stack of two design
+      books with a small green snake plant in a terracotta pot beside them, a
+      tortoiseshell pen resting across an open leather notebook. Large window
+      to her right with sheer linen curtains diffusing midday light.
+    outfit: >-
+      Navy blue silk camisole tank under a soft cream cashmere V-neck cardigan
+      buttoned at the top button only, matching cream wide-leg tailored
+      trousers with a slight crop hem, woven flat leather slides just visible.
+      Hair pulled into a low half-up twist with a small tortoiseshell claw
+      clip, the rest falling in soft natural waves at her shoulders. Small
+      gold studs, a thin gold pendant necklace, no other jewelry. Subtle
+      polished daytime makeup with a touch of mascara and a nude gloss.
+    pose: >-
+      Seated at the desk in three-quarter angle to the camera, body turned
+      slightly toward the laptop, left hand resting on the open notebook,
+      right hand pulled back from the keyboard mid-thought, looking softly at
+      the product on the desk with a small contemplative smile.
+    hand_assignment:
+      phone_hand: null
+      product_hand: null
+      other_hand: both
+      other_hand_does: left rests on the open notebook, right pulled back from the keyboard
+    grip_or_placement: >-
+      The Alluvi box sits on the desk surface between the coffee mug and the
+      open notebook, front face directly toward the camera, the long side
+      oriented horizontally. It is positioned at the natural visual centerpoint
+      of the desk arrangement, slightly forward of the laptop so it reads as
+      the visual hero of her midday workspace.
+    lighting: >-
+      Bright but soft midday daylight filtered through sheer linen curtains on
+      her right, neutral diffuse wash across her face and across the walnut
+      desk surface, very gentle warm undertone on the box's front face, no
+      harsh shadows.
+    mood: mid-workday wellness moment, polished focus, considered
+    palette: cream cashmere, navy silk, warm walnut, ivory ceramic, soft sage green
+    framing: medium close-up (chest up, with desk surface visible at lower frame)
+    camera_height: slightly above her eye line, looking gently down at the desk
+    resolves_failure_modes:
+      - "outfit lock — silk + cashmere completely different from athletic reference"
+      - "WFH workspace product-on-surface rendering"
+    notes: >-
+      First scenario in the new OFFICE category. Premium WFH/professional vibe
+      — a completely different visual register from the wellness/athletic
+      scenarios. Tests silk + cashmere fabric rendering and natural desk
+      product placement.
+
+
+  # ════════════════════════════════════════════════════════════════════════
+  # PILATES STUDIO (4 scenarios)
+  # ════════════════════════════════════════════════════════════════════════
+
+  - id: pilates_reformer_mirror_06
+    category: pilates
+    archetype: held_with_phone
+    difficulty: hard
+    scene: >-
+      Premium pilates studio, sage-green reformer machine behind her, tall
+      floor-to-ceiling mirror she is facing. Warm marble floor, exposed brick
+      side wall, a tall window on the left letting in late-afternoon sun.
+    outfit: >-
+      Cream ribbed seamless cropped tank with built-in shelf bra, matching cream
+      high-waist seamless leggings, small gold huggie earrings, a thin gold
+      pendant necklace. Hair down, soft natural waves with a center part. Bare
+      feet (pilates studio convention). Clean neutral nails.
+    pose: >-
+      Standing facing the mirror, weight on her left leg, right knee slightly
+      bent, posture upright with a soft confident smile.
+    hand_assignment:
+      phone_hand: right
+      product_hand: left
+      other_hand: right (holds phone)
+      other_hand_does: holds phone at face level capturing the mirror reflection
+    grip_or_placement: >-
+      Left hand at chest level, thumb pressed flat on the front face of the
+      box, four fingers wrapping the back edge, box held perpendicular to her
+      body so the front face points directly at the mirror. The right hand
+      holds the phone and nothing else.
+    lighting: >-
+      Soft warm natural daylight pouring through a tall window on her left, late
+      afternoon, warm bone tones across the marble floor, gentle warm rim on
+      her left side and a warm glow on the box's front face.
+    mood: post-class composed, polished
+    palette: cream, beige, sage green, warm marble bone
+    framing: medium full (mid-thigh up to head)
+    camera_height: chest level
+    resolves_failure_modes:
+      - "phone+product hand confusion (Phase 1 image 3)"
+      - "outfit lock — explicitly cream not white-bra-and-shorts of persona ref"
+    notes: >-
+      Highest-priority pilates scenario — the brand's natural visual register.
+      Mirror selfie test: explicit hand assignment, product front-face toward
+      mirror.
+
+
+  # ════════════════════════════════════════════════════════════════════════
+  # YOGA (1 scenario — NEW category, home practice)
+  # ════════════════════════════════════════════════════════════════════════
+
+  - id: yoga_home_practice_07
+    category: yoga
+    archetype: held_product_high
+    difficulty: hard
+    scene: >-
+      Sunlit corner of a minimalist home, warm wood floor, a cork-textured
+      yoga mat unrolled diagonally across the frame, a small terracotta zafu
+      meditation cushion at the upper end of the mat, a small Tibetan singing
+      bowl with a wooden mallet resting beside the cushion, a small sprig of
+      dried lavender on the floor near her right knee. A large green
+      pothos plant in a woven basket against the wall behind her.
+    outfit: >-
+      Dusty mauve seamless ribbed cropped long-sleeve top with thumbholes,
+      matching dusty mauve high-waist seamless leggings with a wide waistband,
+      bare feet, hair pulled into a high half-up topknot with the lower half
+      falling in soft natural waves over her shoulders. Small gold huggie
+      hoops, a thin gold ring on her right index finger. Glowy fresh-practice
+      skin, soft natural makeup with a touch of bronze on the eyelids.
+    pose: >-
+      Kneeling on the yoga mat in a seiza-style sitting position (legs folded
+      under her, sitting back on her heels), posture upright and aligned,
+      shoulders relaxed back, looking softly down at the product held in front
+      of her at chest level with a serene calm half-smile.
+    hand_assignment:
+      phone_hand: null
+      product_hand: both
+      other_hand: both
+      other_hand_does: both cradle the box together at chest level
+    grip_or_placement: >-
+      Both hands cradle the Alluvi box together at chest level, palms facing
+      up and meeting at the centerline of her body, the box resting flat
+      horizontally on her fingertips with thumbs gently pressing on the front
+      face on either side, four fingers of each hand cradling the back edge.
+      Front face of the box angled gently up toward the camera at a soft
+      fifteen-degree tilt.
+    lighting: >-
+      Soft warm early-evening golden-hour daylight from a tall window slightly
+      out of frame on her left, gentle directional warm wash across the left
+      side of her body and across the front face of the box, deeper warm
+      shadow on her right side, warm honeyed tones across the wood floor and
+      the cork mat.
+    mood: meditative intentional, end-of-practice reflection
+    palette: dusty mauve, warm wood, terracotta, soft sage green, warm golden light
+    framing: medium close-up (waist up, hands and product centered in frame)
+    camera_height: chest level (matching her kneeling height), straight-on
+    resolves_failure_modes:
+      - "two-handed cradle grip rendering at chest level"
+      - "outfit lock — dusty mauve distinctly different from dusty pink (09)"
+      - "warm directional golden-hour lighting Step 2 matching"
+    notes: >-
+      First scenario in the new YOGA category. Distinct from pilates (different
+      pose, different setting — home not studio, different time of day —
+      evening not morning). Tests two-handed cradle grip and warm directional
+      lighting fidelity in Step 2.
+
+
+  # ════════════════════════════════════════════════════════════════════════
+  # PILATES STUDIO continued (3 more)
+  # ════════════════════════════════════════════════════════════════════════
+
+  - id: pilates_studio_entrance_08
+    category: pilates
+    archetype: held_product_high
+    difficulty: medium
+    scene: >-
+      Entrance hallway of a premium pilates studio, warm wood floor, a sage-
+      green wall on the right, a tall mirror behind her on the left wall
+      reflecting the studio interior. A small wooden bench against the right
+      wall with a rolled cream towel and a small straw tote bag on it. Soft
+      morning light through the front door at the far end.
+    outfit: >-
+      Pale buttery yellow ribbed seamless tank top, matching pale yellow high-
+      waist bike shorts, white slip-on canvas sneakers, a small gold cuff
+      bracelet on her right wrist. Hair in a low loose bun at the nape of her
+      neck. Subtle gold huggie earrings.
+    pose: >-
+      Walking toward the camera at a slight three-quarter angle, mid-stride,
+      one foot just leaving the floor, the other planted, looking slightly off-
+      camera to her right with a soft natural smile.
+    hand_assignment:
+      phone_hand: null
+      product_hand: right
+      other_hand: left
+      other_hand_does: holds the strap of a small straw tote bag at her left side
+    grip_or_placement: >-
+      Right hand at chest level held slightly forward of her body, thumb on
+      the front face of the box, four fingers wrapping the back edge, box held
+      at a relaxed angle three-quarters toward the camera.
+    lighting: >-
+      Soft warm morning daylight from the open front door at the end of the
+      hallway, golden cast on the wood floor, warm rim light on her right side.
+    mood: arriving fresh, calm energy
+    palette: pale buttery yellow, warm wood, sage green, cream
+    framing: full body (head to mid-shin)
+    camera_height: slightly below her eye line, looking up gently
+    resolves_failure_modes:
+      - "outfit lock — pastel yellow strongly different from white reference"
+    notes: >-
+      Tests motion / mid-stride composition. Outfit color is deliberately
+      saturated to test outfit override.
+
+  - id: pilates_mat_morning_handheld_09
+    category: pilates
+    archetype: held_product_low
+    difficulty: medium
+    scene: >-
+      Sunlit pilates studio, cream-colored mat unrolled on the warm wood floor,
+      a sage-green reformer in the background out of focus. A tall window on
+      the right floods morning light into the room.
+    outfit: >-
+      Soft dusty pink seamless sports bra with crossback straps, matching dusty
+      pink high-waist leggings, a thin gold anklet on her left ankle. Hair
+      down, soft beach waves with a center part. No makeup, glowy fresh skin.
+      Bare feet.
+    pose: >-
+      Sitting cross-legged on the mat, posture upright, hands resting in her
+      lap, looking down at the box with a soft contemplative smile.
+    hand_assignment:
+      phone_hand: null
+      product_hand: both
+      other_hand: both
+      other_hand_does: holds the box together in her lap
+    grip_or_placement: >-
+      Both hands cradle the Alluvi box in her lap, palms facing up and slightly
+      together, the box resting on her fingertips with the front face angled
+      toward the camera at a slight upward tilt. Thumbs rest on either side of
+      the front face.
+    lighting: >-
+      Bright soft morning daylight from a tall window on her right, warm bone
+      tones across the wood floor and mat, gentle warm wash on her right side
+      and on the box surface.
+    mood: morning intention setting, peaceful
+    palette: dusty pink, warm wood, cream mat, sage green
+    framing: three-quarter (head to crossed knees)
+    camera_height: slightly below her eye line, looking up
+    resolves_failure_modes:
+      - "two-handed grip rendering"
+      - "outfit lock — saturated pink unlike white reference"
+    notes: >-
+      Tests two-hand grip. Different from the standard one-hand pinch — both
+      thumbs frame the front face.
+
+  - id: pilates_studio_post_class_mirror_10
+    category: pilates
+    archetype: held_product_high
+    difficulty: hard
+    scene: >-
+      Same premium pilates studio as scenario 06 but viewed from a different
+      angle. Warm marble floor, sage-green reformer behind, exposed brick wall
+      on the right side. The persona stands in front of the floor-to-ceiling
+      mirror with the reformer behind her reflected back.
+    outfit: >-
+      Slate grey seamless ribbed cropped long-sleeve top with thumbholes,
+      matching slate grey high-waist seamless leggings, a thin silver chain
+      necklace, small silver hoops. Hair pulled into a low slick ponytail with
+      a small gold clip securing it. Bare feet. Subtle natural makeup.
+    pose: >-
+      Standing in three-quarter angle to the mirror, weight on her right leg,
+      free hand on her hip, posture confident and relaxed.
+    hand_assignment:
+      phone_hand: null
+      product_hand: right
+      other_hand: left
+      other_hand_does: rests lightly on her left hip
+    grip_or_placement: >-
+      Right hand at upper-chest level, the box held in a clear pinch grip —
+      thumb on the front face near the bottom edge, index and middle fingers
+      on the back, ring and pinky tucked under, box angled slightly toward the
+      camera (not toward the mirror this time — direct camera engagement).
+    lighting: >-
+      Soft warm late-afternoon daylight pouring through a tall window on her
+      left, warm bone tones across the marble floor, gentle warm glow on the
+      box surface, subtle rim light on her left shoulder.
+    mood: post-class polished, mid-thirties poised energy
+    palette: slate grey, warm marble bone, sage green, soft amber
+    framing: medium close-up (chest up)
+    camera_height: chest level
+    resolves_failure_modes:
+      - "persona face fidelity at medium close-up — face is dominant in frame"
+      - "explicit non-mirror-selfie pilates pose to vary from scenario 06"
+    notes: >-
+      Twin to scenario 06 but no phone, slightly tighter framing. Tests face
+      fidelity at chest-up framing where the face is the second-largest element.
+
+
+  # ════════════════════════════════════════════════════════════════════════
+  # BEDROOM MORNING (4 scenarios)
+  # ════════════════════════════════════════════════════════════════════════
+
+  - id: bedroom_bed_handheld_close_11
+    category: bedroom
+    archetype: held_product_high
+    difficulty: hard
+    scene: >-
+      Bedroom morning. Soft white bedding with a leopard-print pillowcase
+      visible behind her head, light wood headboard partially visible, a sheer
+      white curtain on a window to the right letting in soft golden morning
+      light.
+    outfit: >-
+      Pale ivory satin slip nightgown with thin spaghetti straps, slightly
+      crumpled from sleep, top of the slip visible at the neckline. Hair
+      tousled from sleep, soft waves spread on the pillow with a few face-
+      framing pieces. Bare face, glowy fresh skin. No earrings.
+    pose: >-
+      Lying on her back on the pillow, photographed from above-front so we see
+      her face and upper chest. Soft sleepy smile, half-smiling at the camera.
+    hand_assignment:
+      phone_hand: null
+      product_hand: right
+      other_hand: left
+      other_hand_does: rests near her chin, fingers lightly curled
+    grip_or_placement: >-
+      Right hand raised in front of her face, holding the box vertically with
+      thumb on the side of the box and four fingers wrapped around the
+      opposite side, box positioned about twenty centimeters from her face
+      with the front face angled directly at the camera.
+    lighting: >-
+      Soft warm morning daylight from the window on the right, diffuse golden
+      wash across her face and the pillow, no harsh shadows, gentle warm glow
+      on the box surface.
+    mood: playful first-thing-morning, sleepy soft smile
+    palette: ivory satin, leopard tan, warm white, skin warmth
+    framing: close-up (head and upper chest, box dominant in frame)
+    camera_height: directly above her face, slight tilt
+    resolves_failure_modes:
+      - "persona face drift on close-ups (Phase 1 image 2)"
+      - "satin slip outfit completely different from reference white sports bra"
+    notes: >-
+      Hardest face-fidelity test — face is the largest element. Use
+      identity_lock_close_up from persona.yaml.
+
+  - id: bedroom_vanity_getting_ready_12
+    category: bedroom
+    archetype: placed_on_surface
+    difficulty: medium
+    scene: >-
+      Bedroom vanity area, a round arched mirror on a warm walnut vanity,
+      arranged skincare bottles and a small ceramic dish with a gold tray on
+      the vanity surface, a small linen-shaded lamp glowing warmly in the
+      corner. Soft early-morning light from a window slightly out of frame.
+    outfit: >-
+      Pale blush pink linen robe loosely tied at the waist with a slim ribbon
+      sash, the V-neckline open showing a thin white camisole strap underneath.
+      Hair clipped half-up in a claw clip, the lower half falling in soft
+      waves. Bare face mid-skincare-application.
+    pose: >-
+      Sitting on a small upholstered vanity stool, three-quarter angle to the
+      camera, one hand at her cheek mid-skincare gesture, looking at her
+      reflection in the mirror.
+    hand_assignment:
+      phone_hand: null
+      product_hand: null
+      other_hand: right
+      other_hand_does: lifted to her cheek mid-skincare-application
+    grip_or_placement: >-
+      The Alluvi box sits on the vanity surface to her right, positioned
+      between a ceramic skincare bottle and an open glass jar of cotton pads,
+      front face angled three-quarters toward the camera. The box is the
+      visual anchor of the vanity surface arrangement.
+    lighting: >-
+      Warm bedside lamp from the corner combined with soft morning daylight
+      from a window slightly out of frame on the left, warm honeyed tones
+      across the walnut vanity and gentle warm glow on the box surface.
+    mood: slow morning skincare moment, soft and unhurried
+    palette: warm walnut, blush pink, soft amber lamp glow, ivory ceramics
+    framing: three-quarter (head to waist, vanity surface visible)
+    camera_height: chest level
+    resolves_failure_modes:
+      - "product-on-surface in styled lineup"
+      - "outfit completely different from reference"
+    notes: >-
+      Product is part of the vanity styling, not the persona's hand. Persona
+      is engaged in skincare action — product implied as part of her routine.
+
+  - id: bedroom_robe_with_product_13
+    category: bedroom
+    archetype: held_product_low
+    difficulty: medium
+    scene: >-
+      Bedroom doorway leading to a softly-lit bathroom in the background,
+      hardwood floor, a low cream-colored bench in front of the doorway with a
+      folded white towel and a small ceramic mug. Soft morning light from
+      windows throughout.
+    outfit: >-
+      Long cream waffle-knit robe tied loosely at the waist, the robe falling
+      to mid-shin, V-neckline open with a thin white camisole strap underneath.
+      Hair down in loose morning waves, slightly tousled. Bare face, glowy
+      skin. Small gold studs.
+    pose: >-
+      Standing in the doorway facing slightly to her left, weight on her left
+      leg, looking down at the box in her hand with a soft contemplative
+      smile.
+    hand_assignment:
+      phone_hand: null
+      product_hand: left
+      other_hand: right
+      other_hand_does: gently holds the edge of the doorframe
+    grip_or_placement: >-
+      Left hand at hip level, palm facing up, the box rests flat on her open
+      palm with thumb gently on top to steady it, front face toward the camera.
+      A relaxed casual hold, not a presentation grip.
+    lighting: >-
+      Soft warm morning daylight from windows on either side, balanced
+      diffuse wash, gentle warm glow on the cream robe and on the box.
+    mood: morning routine pause, considering the start of the day
+    palette: cream waffle, warm wood, soft white, blush undertones
+    framing: full body (head to mid-shin)
+    camera_height: chest level
+    resolves_failure_modes:
+      - "open palm hold rendering — different from pinch grip"
+    notes: >-
+      Tests open-palm hold (rare grip type). The robe outfit is a deliberate
+      contrast to all athletic scenarios.
+
+  - id: bedroom_journaling_evening_14
+    category: bedroom
+    archetype: placed_on_surface
+    difficulty: medium
+    scene: >-
+      Bedroom corner writing nook at twilight, a vintage caramel-leather
+      armchair angled slightly toward the camera, a small warm-wood side table
+      to her right with a small brass desk lamp glowing softly, an open leather-
+      bound journal resting on the side table, a small ceramic mug of chamomile
+      tea with a tea bag string draped over the rim. A tall window behind her
+      shows deep blue twilight outside, the sky still holding the last warm
+      orange band on the horizon.
+    outfit: >-
+      Soft sage green linen long-sleeve button-up pajama top tucked loosely
+      into matching sage green linen wide-leg pajama pants, two top buttons
+      open showing collarbones, sleeves rolled up to mid-forearm. Bare feet.
+      Hair in a low loose braid resting over her right shoulder, a few face-
+      framing pieces left out. No earrings, a single thin gold ring on her
+      left ring finger. Bare face, glowy nighttime skin.
+    pose: >-
+      Sitting in the armchair with one leg tucked under her, the other foot
+      lightly on the floor, body angled three-quarters toward the side table,
+      her right hand mid-write in the open journal with a tortoiseshell pen,
+      looking down at the page with a small thoughtful smile.
+    hand_assignment:
+      phone_hand: null
+      product_hand: null
+      other_hand: right
+      other_hand_does: holds a tortoiseshell pen mid-write in the open journal
+    grip_or_placement: >-
+      The Alluvi box sits on the side table directly beside the brass desk
+      lamp, front face angled three-quarters toward the camera, positioned
+      between the lamp and the chamomile tea mug so it reads as the central
+      element of the nightstand arrangement. The lamp glow falls warm across
+      the box's front face.
+    lighting: >-
+      Warm brass desk lamp on her right creates a strong directional warm
+      pool of light across the side table and the right side of her face,
+      combined with cool deep-blue twilight from the window behind her giving
+      a cool rim on her shoulders and hair. Strong warm/cool dual-source
+      mood lighting.
+    mood: evening wind-down, reflective, end-of-day intention
+    palette: sage green linen, caramel leather, warm brass amber, twilight blue
+    framing: three-quarter (head to mid-thigh, side table visible at right edge)
+    camera_height: chest level
+    resolves_failure_modes:
+      - "evening warm/cool dual-source lighting Step 2 matching"
+      - "linen pajama drape rendering — soft natural fabric"
+      - "side-table product placement in styled lineup"
+    notes: >-
+      Replaces the old bedside flat-lay. Tests evening twilight + warm lamp
+      mood lighting — one of the trickier dual-source scenarios. Linen
+      pajamas add fabric variety. The journal+pen prop signals nighttime
+      ritual rather than morning routine.
+
+
+  # ════════════════════════════════════════════════════════════════════════
+  # KITCHEN (4 scenarios)
+  # ════════════════════════════════════════════════════════════════════════
+
+  - id: kitchen_breakfast_prep_15
+    category: kitchen
+    archetype: held_product_low
+    difficulty: medium
+    scene: >-
+      Bright modern kitchen, white marble countertop with a small wooden
+      cutting board in the foreground holding fresh strawberries, half-sliced
+      banana, and a small ceramic bowl of granola. A high-end blender on the
+      counter contains a green smoothie mid-blend (slightly visible blue-green
+      liquid through the glass). A small green herb plant in a terracotta pot
+      on the windowsill behind. Bright morning light pours through a tall
+      window behind the island.
+    outfit: >-
+      Soft mint green oversized linen button-down shirt with the sleeves rolled
+      to her elbows, two top buttons open showing a thin white cropped tank
+      underneath, paired with cream linen drawstring shorts with a relaxed fit.
+      Bare feet. Hair pulled into a high messy bun on top of her head with
+      face-framing pieces escaping. Small gold huggie hoops, layered thin gold
+      necklaces visible at her collarbone. Glowy fresh-morning skin with subtle
+      natural makeup.
+    pose: >-
+      Standing at the kitchen island in three-quarter angle to the camera,
+      hip leaning lightly against the counter edge, left hand resting on the
+      cutting board near the strawberries, body relaxed and engaged in
+      morning prep, looking softly down at the box in her right hand with a
+      small content smile.
+    hand_assignment:
+      phone_hand: null
+      product_hand: right
+      other_hand: left
+      other_hand_does: rests on the cutting board beside the strawberries
+    grip_or_placement: >-
+      Right hand at hip level, the box held flat horizontally with thumb on
+      the top edge near the back, index and middle fingers along the bottom
+      face, ring and pinky tucked underneath, front face of the box angled
+      three-quarters toward the camera at a relaxed casual angle.
+    lighting: >-
+      Bright soft morning daylight from a tall window behind the island,
+      backlit window with diffuse front-fill from her left, warm bone tones
+      across the marble countertop, gentle warm glow on the cream linen
+      shorts and on the box's front face.
+    mood: unhurried morning ritual, fresh prep, intentional
+    palette: mint green linen, cream linen, white marble, strawberry red, fresh green
+    framing: three-quarter (waist up, with counter and cutting board visible)
+    camera_height: chest level
+    resolves_failure_modes:
+      - "linen drape rendering on oversized button-down"
+      - "outfit lock — mint green completely different from athletic reference"
+      - "bright backlit window lighting Step 2 matching"
+    notes: >-
+      Replaces the old supplements lineup flat-lay. Active morning prep vibe —
+      cutting board, blender, fresh ingredients all visible — gives ad-video
+      narrative ('start your morning with…'). Tests oversized linen drape
+      rendering specifically.
+
+  - id: kitchen_matcha_morning_handheld_16
+    category: kitchen
+    archetype: held_product_low
+    difficulty: medium
+    scene: >-
+      Modern minimalist kitchen island with white marble countertop, light wood
+      stools tucked under, soft cream wall behind, a small green plant in a
+      ceramic pot on the counter. A bamboo whisk in a ceramic matcha bowl on
+      the island, fresh matcha powder dusted on the bowl edge.
+    outfit: >-
+      Oversized soft butter-yellow long-sleeve waffle-knit pullover, sleeves
+      pushed up to her elbows, the pullover loose and falling off one shoulder
+      slightly. Underneath, a thin white camisole strap visible. Cream linen
+      drawstring shorts. Hair in a messy low bun with face-framing pieces.
+      Bare feet.
+    pose: >-
+      Standing at the kitchen island three-quarter angle to the camera, one
+      hip leaning against the counter edge, looking softly down at the matcha
+      bowl with a relaxed half-smile.
+    hand_assignment:
+      phone_hand: null
+      product_hand: left
+      other_hand: right
+      other_hand_does: holds the bamboo whisk poised over the matcha bowl
+    grip_or_placement: >-
+      Left hand at hip level resting against the counter edge, holding the
+      Alluvi box in a relaxed casual grip — thumb on the top edge, four
+      fingers along the bottom edge, box held flat horizontally with the
+      front face angled three-quarters toward the camera.
+    lighting: >-
+      Soft morning daylight pouring through a window slightly out of frame on
+      the left, warm bone tones across the marble countertop, gentle warm
+      side-light on her left arm and on the box's front face.
+    mood: slow saturday morning, unhurried
+    palette: butter yellow, white marble, light wood, matcha green, cream
+    framing: three-quarter (waist up, with counter surface visible)
+    camera_height: chest level
+    resolves_failure_modes:
+      - "outfit lock — saturated yellow oversized completely unlike persona reference"
+      - "off-shoulder draped clothing rendering"
+    notes: >-
+      Outfit deliberately loose and saturated. Tests outfit override and
+      drape rendering.
+
+  - id: kitchen_breakfast_nook_17
+    category: kitchen
+    archetype: placed_on_surface
+    difficulty: medium
+    scene: >-
+      Cozy breakfast nook in a corner of the kitchen, a small round walnut-
+      wood table tucked against a tall window with sheer curtains, a single
+      upholstered chair in cream linen pulled up to the table, a small ceramic
+      vase of dried wildflowers in muted ochre and sage tones on the table.
+      An open hardcover book lies face-down on the table, an empty ceramic
+      coffee cup on a small wooden saucer with cinnamon dust on the saucer
+      rim. Bright golden morning sunlight streams through the window onto the
+      table.
+    outfit: >-
+      Deep emerald-green silk kimono robe with wide elbow-length sleeves and
+      a self-fabric tie at the waist, loosely tied open at the front showing
+      a thin white spaghetti-strap camisole underneath. Matching deep emerald
+      silk relaxed-fit pajama pants. Bare feet. Hair down in soft natural
+      waves with a slight side part, a single thin gold pendant necklace
+      visible at her collarbone. No earrings. Subtle natural makeup with a
+      touch of bronze, glowy fresh-morning skin.
+    pose: >-
+      Sitting at the breakfast nook in the cream linen chair, body angled
+      three-quarters toward the camera, one leg crossed over the other under
+      the table, right elbow resting on the table, right hand cupping her chin
+      thoughtfully, looking softly toward the camera with a relaxed half-smile.
+    hand_assignment:
+      phone_hand: null
+      product_hand: null
+      other_hand: right
+      other_hand_does: cups her chin thoughtfully, elbow resting on the table
+    grip_or_placement: >-
+      The Alluvi box sits on the walnut-wood table directly in front of her,
+      front face angled three-quarters toward the camera, positioned between
+      the ceramic coffee cup and the open book so it reads as the central
+      element of her breakfast nook arrangement. The morning sunlight from
+      the window falls warm across the box's front face.
+    lighting: >-
+      Bright warm golden morning sunlight from the tall window behind the
+      breakfast nook, strong directional warm wash across the table surface
+      and across the front face of the box, gentle warm side-light on her
+      face, deeper warm shadows on the side of her body opposite the window.
+    mood: slow saturday morning, lingering breakfast, contemplative
+    palette: deep emerald silk, walnut wood, cream linen, warm golden morning, dried ochre
+    framing: three-quarter (chest up, with breakfast table surface visible at lower frame)
+    camera_height: chest level, across-table angle
+    resolves_failure_modes:
+      - "silk kimono drape rendering — flowy luxurious fabric"
+      - "outfit lock — emerald silk completely unlike athletic / waffle existing outfits"
+      - "strong directional golden-hour lighting Step 2 matching"
+    notes: >-
+      Replaces the old kitchen island overhead flat-lay. Cozy breakfast nook
+      is thematically distinct from the kitchen-island bustle of scenarios 16
+      and 18 — quieter, more lingering. Silk kimono is the most luxurious
+      fabric in the entire scenario library; tests Step 2 silk rendering.
+
+  - id: kitchen_coffee_bar_moment_18
+    category: kitchen
+    archetype: held_product_high
+    difficulty: hard
+    scene: >-
+      Sleek built-in coffee bar in a modern kitchen, espresso machine on the
+      counter, small open shelf above with arranged ceramic mugs, a white
+      marble counter surface in front of the espresso machine. A small ceramic
+      tray on the counter with a folded linen napkin and a small wood spoon.
+    outfit: >-
+      Charcoal grey ribbed long-sleeve cropped pullover (sleeves long enough
+      to cover her hands partially), high-waisted dark wash relaxed jeans
+      with a slight crop hem, white minimalist sneakers. Hair down in soft
+      waves. Layered thin gold necklaces. Small gold huggie hoops.
+    pose: >-
+      Standing facing the coffee bar three-quarter angle to the camera,
+      looking down at the box held at chest level with a soft confident
+      smile, weight on her right leg.
+    hand_assignment:
+      phone_hand: null
+      product_hand: right
+      other_hand: left
+      other_hand_does: rests lightly on the marble counter edge
+    grip_or_placement: >-
+      Right hand at upper-chest level, thumb on the front face of the box near
+      the top edge, index and middle fingers on the back, ring and pinky
+      tucked under, box angled forty-five degrees toward the camera.
+    lighting: >-
+      Cool overhead pendant lighting on the coffee bar combined with warm
+      morning daylight from a window on the right side of the frame, mixed
+      cool/warm wash on her face and a warm rim on the right side of the box.
+    mood: morning ritual, polished casual energy
+    palette: charcoal grey, dark denim, warm marble, espresso brown, brass accents
+    framing: three-quarter (waist up)
+    camera_height: chest level
+    resolves_failure_modes:
+      - "denim outfit rendering — completely different from athletic reference"
+      - "mixed lighting Step 2 fidelity"
+    notes: >-
+      Tests denim/casualwear rendering. Mixed lighting (cool overhead +
+      warm window) is the trickiest case for Step 2 lighting matching.
+
+
+  # ════════════════════════════════════════════════════════════════════════
+  # BATHROOM (3 scenarios)
+  # ════════════════════════════════════════════════════════════════════════
+
+  - id: bathroom_warm_oak_shelf_19
+    category: bathroom
+    archetype: placed_on_surface
+    difficulty: medium
+    scene: >-
+      Three-quarter angle shot of a warm-oak floating shelf against a soft
+      cream tile bathroom wall. The shelf holds a styled lineup of beige
+      skincare bottles, a small ceramic dish with a gua sha tool, an unlit
+      candle, the Alluvi box, and a small dried flower stem. Behind the
+      shelf, the persona's partial reflection visible in the bathroom mirror
+      at the left edge of the frame.
+    outfit: >-
+      White waffle-knit short bathrobe loosely tied, neckline open showing
+      collarbones, only her shoulder, ear, and a portion of her cheek visible
+      at the edge of the frame. Hair wet and slicked back. Bare face mid-
+      skincare application.
+    pose: >-
+      Persona is partial — only her left shoulder, neck, ear and a sliver of
+      her cheek are visible at the left edge of the frame, the rest of the
+      composition belongs to the shelf and its arrangement. She is mid-
+      skincare-application, fingers visible at her cheek.
+    hand_assignment:
+      phone_hand: null
+      product_hand: null
+      other_hand: right (partial)
+      other_hand_does: visible at her cheek mid-skincare application
+    grip_or_placement: >-
+      The Alluvi box sits at the right end of the shelf with its front face
+      angled toward the camera, between the unlit candle and the small
+      ceramic dish. It is the visual hero of the shelf arrangement.
+    lighting: >-
+      Warm overhead bathroom lighting, diffuse golden cast across the oak
+      shelf and cream tile, gentle warm glow on the box's front face. Soft
+      indirect light on the persona's partial reflection.
+    mood: calm evening reset, end-of-day skincare moment
+    palette: warm cream, oat, oak, soft amber
+    framing: three-quarter angle on the shelf, persona partial at left edge
+    camera_height: shelf level (slightly above shelf surface)
+    resolves_failure_modes:
+      - "medium feasibility — partial persona, product as styled object"
+    notes: >-
+      Tests partial-persona compositions where product is the hero and the
+      persona is contextual.
+
+  - id: bathroom_morning_skincare_20
+    category: bathroom
+    archetype: held_product_high
+    difficulty: medium
+    scene: >-
+      Bright modern bathroom with soft pink penny-tile back wall, brass
+      fixtures, a white marble counter with arranged skincare products: a small
+      ceramic dish of cotton pads, an amber-glass dropper bottle, a clear glass
+      tumbler of water with a slice of lemon floating, a small folded white
+      washcloth. A round arched mirror on the wall above the counter, the
+      persona's reflection clearly visible in the mirror behind her shoulder.
+    outfit: >-
+      Soft peach silk wrap robe loosely tied at the waist with the wrap closure
+      crossing over her chest, the V-neckline open showing collarbones and a
+      thin white camisole strap underneath. Sleeves push slightly past her
+      elbows. Hair pulled back in a low loose claw-clip hold with a few face-
+      framing pieces left out. Bare face mid-routine, glowy dewy skin, no
+      earrings, a single thin gold pendant necklace visible at her collarbone.
+    pose: >-
+      Standing at the marble counter facing the mirror at a three-quarter angle
+      to the camera, her body slightly toward the counter and her face turned
+      to her own reflection, examining the box held up to the mirror with a
+      small curious smile. Camera captures from her side so we see both her
+      profile and her reflection.
+    hand_assignment:
+      phone_hand: null
+      product_hand: right
+      other_hand: left
+      other_hand_does: rests lightly on the marble counter edge
+    grip_or_placement: >-
+      Right hand at chest level held in front of her so the box is between her
+      face and the mirror, thumb pressed flat on the front face of the box,
+      index and middle fingers on the back edge, ring and pinky tucked under
+      the bottom edge, box angled toward her own reflection with the front
+      face visible to the camera in profile.
+    lighting: >-
+      Bright cool morning daylight from a high bathroom window slightly out
+      of frame combined with warm brass sconce light beside the round mirror,
+      mixed cool/warm wash on her face, a warm rim on her right side and on
+      the box surface, cool ambient fill across the marble counter.
+    mood: morning skincare ritual, considered, polished start
+    palette: peach silk, white marble, soft pink penny tile, brass amber, cool morning
+    framing: medium close-up (chest up, mirror reflection visible behind her shoulder)
+    camera_height: slightly above her eye line, capturing both her profile and reflection
+    resolves_failure_modes:
+      - "outfit lock — peach silk completely different from white waffle (19, 21)"
+      - "two-view mirror composition — profile + reflection both visible"
+      - "mixed cool/warm lighting Step 2 fidelity"
+    notes: >-
+      Replaces the old bathroom marble flat-lay. Different vibe from the wet-
+      hair routines (19, 21) — this is mid-skincare, dry-hair, morning. Tests
+      silk-wrap-robe drape (different from waffle-knit), profile + reflection
+      composition, and dual-source bathroom lighting.
+
+  - id: bathroom_vanity_routine_21
+    category: bathroom
+    archetype: held_product_high
+    difficulty: hard
+    scene: >-
+      Bathroom vanity, a large round mirror reflecting the persona, a marble
+      counter in front of her with skincare products arranged. Soft warm
+      sconce lighting on either side of the mirror.
+    outfit: >-
+      White waffle-knit short bathrobe loosely tied at the waist, neckline
+      slightly open showing collarbones and the curve of her shoulder. Hair
+      wet, slicked back into a loose low bun, a few tendrils framing her face.
+      No earrings, no makeup, glowy fresh-shower skin.
+    pose: >-
+      Standing facing the mirror, photographed from the side angle so we see
+      her in three-quarter view with her reflection visible in the mirror,
+      examining the box with a curious soft smile.
+    hand_assignment:
+      phone_hand: null
+      product_hand: right
+      other_hand: left
+      other_hand_does: rests on the marble counter edge
+    grip_or_placement: >-
+      Right hand at chest level, the box held close to her face for inspection,
+      thumb on the front face, four fingers wrapping around the back edge,
+      box angled slightly toward her face but with the front face still
+      visible to the camera.
+    lighting: >-
+      Warm sconce lighting on either side of the mirror, soft warm wash across
+      her face, gentle warm rim from the sconces on the box surface.
+    mood: post-shower considered evaluation, evening reset
+    palette: warm marble, soft white waffle, warm amber sconce, ivory ceramics
+    framing: three-quarter (waist up, mirror reflection visible)
+    camera_height: slightly above her eye line, looking gently down
+    resolves_failure_modes:
+      - "two-mirror composition (her body + mirror reflection both in frame)"
+      - "wet hair styling rendering"
+    notes: >-
+      Hardest bathroom scenario. Wet hair + bathrobe outfit + two-view mirror
+      reflection. Tests rendering of damp slicked-back hair specifically.
+
+
+  # ════════════════════════════════════════════════════════════════════════
+  # RECOVERY / REST (3 scenarios)
+  # ════════════════════════════════════════════════════════════════════════
+
+  - id: recovery_couch_evening_22
+    category: recovery
+    archetype: held_product_low
+    difficulty: medium
+    scene: >-
+      Cream-upholstered modern sofa in a warmly-lit living room, a large soft
+      throw blanket draped behind her, a small wooden side table beside the
+      sofa with an unlit candle and a stainless steel water bottle. Floor
+      lamp glowing softly in the upper-left corner. Window in the background
+      with twilight blue dusk light filtering in.
+    outfit: >-
+      Heavyweight cashmere oatmeal-colored cropped lounge sweater, matching
+      oatmeal cashmere wide-leg lounge pants, white slouchy crew socks. Hair
+      in a low loose bun. Layered thin gold necklaces, no earrings. Bare face,
+      glowy skin.
+    pose: >-
+      Sitting on the sofa with one leg tucked under her, the other foot on the
+      floor, body angled three-quarters toward the camera, looking softly down
+      at the box in her lap with a content smile.
+    hand_assignment:
+      phone_hand: null
+      product_hand: both
+      other_hand: both
+      other_hand_does: holds the box together in her lap
+    grip_or_placement: >-
+      Both hands rest in her lap holding the box gently, palms partially
+      facing up, thumbs on the front face on either side, fingers cradling
+      the back. Box held flat horizontally with the front face up toward the
+      camera at a soft tilt.
+    lighting: >-
+      Warm floor lamp light from the upper-left corner combined with a deep
+      cool blue twilight from the window in the background. Mixed warm/cool
+      mood lighting, warm wash on her face and on the box surface, cool
+      ambient blue in the background.
+    mood: end-of-day exhale, recovery evening
+    palette: oatmeal cashmere, cream sofa, warm amber lamp, twilight blue
+    framing: three-quarter (head to lap)
+    camera_height: chest level
+    resolves_failure_modes:
+      - "two-handed lap hold rendering"
+      - "warm/cool dual-source lighting Step 2 matching"
+    notes: >-
+      Most cinematic lighting in the set — warm lamp + cool twilight. Tests
+      Step 2 lighting fidelity in a complex mixed-temperature scene.
+
+  - id: recovery_armchair_reading_23
+    category: recovery
+    archetype: placed_on_surface
+    difficulty: medium
+    scene: >-
+      Deep linen-upholstered armchair in soft sand-beige tone tucked into a
+      reading corner of a softly-lit living room. A tall slim floor lamp with
+      a linen shade glows warmly behind the armchair, casting a pool of light.
+      A small round walnut-wood side table beside the armchair holds a
+      ceramic mug of herbal tea (chamomile-colored liquid visible at the rim),
+      an open hardcover book face-down, a thin tortoiseshell reading-glass
+      case, and the Alluvi box. A small green plant in a terracotta pot on
+      the floor beside the chair.
+    outfit: >-
+      Chocolate brown ribbed cropped long-sleeve top with a relaxed boat
+      neckline showing collarbones, paired with cream linen wide-leg pants
+      with a slight crop hem, slouchy cream cable-knit crew socks. Hair in a
+      low loose bun with a few face-framing pieces escaping. No earrings, a
+      thin gold ring on her right index finger. Bare face, glowy late-
+      afternoon skin with subtle warmth on her cheeks.
+    pose: >-
+      Sitting in the armchair with one leg tucked under her and the other
+      foot on the floor, body angled three-quarters toward the camera and
+      slightly toward the side table, one hand resting in her lap, the other
+      raised lightly to her face. Looking softly toward the side table with
+      a content half-smile.
+    hand_assignment:
+      phone_hand: null
+      product_hand: null
+      other_hand: both
+      other_hand_does: left rests in her lap, right raised lightly to her face brushing hair from her temple
+    grip_or_placement: >-
+      The Alluvi box sits on the walnut-wood side table directly to her right,
+      front face angled three-quarters toward the camera, positioned between
+      the ceramic mug of herbal tea and the open hardcover book so it reads
+      as the central element of the side-table arrangement. The warm lamp
+      glow from above falls softly across the box's front face.
+    lighting: >-
+      Warm floor lamp from the upper-left behind the armchair throws a strong
+      directional warm pool across the back of the armchair, the side table,
+      and the right side of her face and body. Cool blue late-afternoon
+      ambient light fills the rest of the room from a window slightly out of
+      frame on the right, giving a cool counter-fill across her left side
+      and across the cream linen pants.
+    mood: late-afternoon quiet reading moment, restorative pause
+    palette: chocolate brown, cream linen, sand-beige armchair, warm lamp amber, cool afternoon blue
+    framing: three-quarter (head to mid-thigh, side table visible at right edge)
+    camera_height: chest level, slight angle toward the side table
+    resolves_failure_modes:
+      - "outfit lock — chocolate brown + cream completely unlike oatmeal cashmere (22) or ivory waffle (24)"
+      - "warm lamp + cool ambient dual-source Step 2 matching"
+      - "side-table styled lineup with persona prominently in frame"
+    notes: >-
+      Replaces the old blanket-reading flat-lay. Adds a persona to the
+      reading-corner setting — same restorative vibe, but ad-video ready.
+      Chocolate brown is a brand-new color in the scenario library. Tests
+      Step 2 fabric rendering on ribbed cropped top + linen pants and the
+      cinematic warm-lamp + cool-window lighting combination.
+
+  - id: recovery_post_shower_robe_24
+    category: recovery
+    archetype: held_product_high
+    difficulty: medium
+    scene: >-
+      Bedroom or living room corner, soft natural daylight from a large window
+      on the left, a wooden chair with a folded cashmere throw draped over it,
+      a small green plant in a ceramic pot beside the chair. Warm wood floor.
+    outfit: >-
+      Long ivory waffle-knit robe tied loosely at the waist, sleeves pushed up
+      to her elbows, the robe falling to mid-shin. White spaghetti-strap
+      camisole visible at the V-neckline. Hair damp and slicked back into a
+      low loose bun. Small gold studs. Bare face, dewy fresh-shower skin.
+    pose: >-
+      Standing in three-quarter angle to the camera, weight on her right leg,
+      one foot slightly forward, looking softly down at the box with a calm
+      content smile.
+    hand_assignment:
+      phone_hand: null
+      product_hand: right
+      other_hand: left
+      other_hand_does: rests at her left hip, gently touching the robe sash
+    grip_or_placement: >-
+      Right hand at chest level, thumb on the front face of the box, four
+      fingers wrapping around the back edge, box held vertically (long side
+      vertical) with the front face directly toward the camera.
+    lighting: >-
+      Soft cool morning daylight from a large window on the left, balanced
+      diffuse wash across her face and the robe, gentle cool-neutral tone on
+      the box surface.
+    mood: post-shower fresh, calm beginning
+    palette: ivory waffle, warm wood, sage green plant, soft daylight white
+    framing: medium full (mid-thigh up)
+    camera_height: chest level
+    resolves_failure_modes:
+      - "outfit lock — robe + damp hair completely different from reference"
+      - "vertically oriented box hold (long side vertical instead of horizontal)"
+    notes: >-
+      Tests vertical box orientation in a held grip. Most scenarios use
+      horizontal orientation; this one rotates the box 90 degrees.
+
+
+  # ════════════════════════════════════════════════════════════════════════
+  # OUTDOOR LIFESTYLE (4 scenarios)
+  # ════════════════════════════════════════════════════════════════════════
+
+  - id: outdoor_post_walk_park_25
+    category: outdoor
+    archetype: held_product_low
+    difficulty: medium
+    scene: >-
+      A gravel walking path in a leafy urban park during golden hour, soft
+      green trees in the background slightly out of focus, a wooden park bench
+      visible to her right with a leather tote bag resting on it. Late
+      afternoon golden sunlight filtering through the tree canopy.
+    outfit: >-
+      Cropped olive-green long-sleeve athletic pullover with a small zip at
+      the neck (zipped down halfway), high-waist black athletic leggings, white
+      minimalist sneakers, a small black crossbody bag with a thin strap. Hair
+      in a high sleek ponytail. Small gold huggie hoops. Subtle natural makeup
+      with a touch of gloss.
+    pose: >-
+      Standing on the path facing the camera at a slight three-quarter angle,
+      one foot slightly forward as if mid-walk pause, looking off-camera to
+      her left with a soft natural smile.
+    hand_assignment:
+      phone_hand: null
+      product_hand: right
+      other_hand: left
+      other_hand_does: holds the strap of the small black crossbody bag
+    grip_or_placement: >-
+      Right hand at hip level, the box held in a relaxed pinch grip, thumb on
+      the top edge of the box, four fingers along the bottom edge, the box
+      held flat horizontally with the front face angled three-quarters toward
+      the camera.
+    lighting: >-
+      Warm late-afternoon golden-hour sunlight filtered through the tree canopy
+      on her left, dappled warm light across her face and outfit, gentle warm
+      glow on the box's front face, deep green shadows in the background.
+    mood: golden-hour hot girl walk, fresh outdoor energy
+    palette: olive green, black athletic, golden warm, deep tree green
+    framing: full body (head to mid-calf)
+    camera_height: chest level
+    resolves_failure_modes:
+      - "outdoor lighting Step 2 fidelity (dappled light)"
+      - "outfit and bag accessory rendering"
+    notes: >-
+      Outdoor scenario tests dappled natural light Step 2 matching — much
+      harder than studio lighting. Crossbody bag is an accessory test.
+
+  - id: outdoor_smoothie_bar_26
+    category: outdoor
+    archetype: placed_on_surface
+    difficulty: medium
+    scene: >-
+      Outdoor counter at a sunny smoothie / juice bar, polished wood counter
+      surface, an open bookcase of plant-based cookbooks behind, lush green
+      ferns hanging above. A tall glass of green smoothie in front of her on
+      the counter, a small ceramic ramekin of granola, the Alluvi box. Bright
+      natural daylight all around.
+    outfit: >-
+      White cotton wrap top with a tie at the waist (tied loosely on the side),
+      high-waist tailored linen wide-leg trousers in soft sand color, woven
+      flat sandals just barely visible. Hair down in soft natural waves. Small
+      gold studs and a layered thin gold necklace. Subtle bronzy makeup.
+    pose: >-
+      Standing at the smoothie bar counter, body angled three-quarters toward
+      the camera, both hands resting lightly on the counter, looking softly
+      down at the green smoothie with a small smile.
+    hand_assignment:
+      phone_hand: null
+      product_hand: null
+      other_hand: both
+      other_hand_does: both rest lightly on the counter edge
+    grip_or_placement: >-
+      The Alluvi box sits on the wood counter directly in front of her,
+      between the green smoothie glass and the granola ramekin, front face
+      angled three-quarters toward the camera. It is part of her morning
+      smoothie-bar arrangement.
+    lighting: >-
+      Bright natural daylight from above and the sides, slightly diffused by
+      the canopy of ferns, warm wash across her face and the wood counter,
+      gentle warm glow on the box.
+    mood: morning smoothie ritual, bright energetic
+    palette: warm wood, sand linen, white cotton, deep green ferns, vibrant green smoothie
+    framing: three-quarter (waist up, counter surface visible)
+    camera_height: chest level
+    resolves_failure_modes:
+      - "bright outdoor lighting Step 2 fidelity"
+      - "linen drape rendering"
+    notes: >-
+      Tests rendering of soft natural fabrics (cotton wrap top, linen trousers)
+      under bright outdoor light.
+
+  - id: outdoor_golden_hour_patio_27
+    category: outdoor
+    archetype: held_product_high
+    difficulty: easy
+    scene: >-
+      Modern minimalist patio at golden hour, a low concrete planter with
+      small ornamental grasses behind her, a folded teak deck chair to her
+      right with a cream linen throw draped over it. Distant city skyline
+      softly out of focus in the deep background. Warm low-angle sunlight.
+    outfit: >-
+      Black square-neck cropped tank top, matching black mid-thigh tailored
+      shorts, low-heeled brown leather sandals, a thin gold tennis bracelet,
+      small gold huggie hoops. Hair down in soft beach waves. Subtle bronzy
+      makeup with a soft glow.
+    pose: >-
+      Standing on the patio facing the camera at a slight three-quarter angle,
+      weight on her right leg, looking directly at the camera with a relaxed
+      confident smile.
+    hand_assignment:
+      phone_hand: null
+      product_hand: right
+      other_hand: left
+      other_hand_does: rests at her side
+    grip_or_placement: >-
+      Right hand at chest level, thumb on the front face of the box, index and
+      middle fingers on the back, ring and pinky tucked under, box angled
+      slightly toward the camera so the front face catches the warm golden-
+      hour light directly.
+    lighting: >-
+      Strong warm golden-hour sunlight from a low angle on her right side,
+      golden rim light across her right shoulder and right side of the box,
+      deep amber tones across the patio, soft cool sky in the background.
+    mood: golden-hour glow, confident calm
+    palette: black tailored, warm gold, teak wood, deep amber, soft sky cool
+    framing: medium full (mid-thigh up)
+    camera_height: chest level
+    resolves_failure_modes:
+      - "strong directional warm light Step 2 matching"
+    notes: >-
+      Strong directional light is the cleanest test of Step 2 lighting hooks
+      — golden rim is unmistakable.
+
+
+  # ════════════════════════════════════════════════════════════════════════
+  # CAFE (1 scenario — NEW category)
+  # ════════════════════════════════════════════════════════════════════════
+
+  - id: cafe_morning_table_28
+    category: cafe
+    archetype: held_product_low
+    difficulty: medium
+    scene: >-
+      Cozy minimalist neighborhood cafe, a small round white-marble bistro
+      table tucked next to a large arched window, a wicker chair pulled up
+      to the table. On the table: a wide ceramic latte cup with milky foam
+      art, a small wooden plate holding a flaky golden croissant, an open
+      hardcover book face-down beside the cup. Behind her, a soft-focus
+      view of the cafe interior with brass pendant lights and exposed brick.
+      Through the arched window, soft morning city light.
+    outfit: >-
+      Rust-orange ribbed knit short-sleeve sweater with a relaxed crew
+      neckline showing collarbones, tucked loosely into high-waist dark wash
+      straight-leg jeans with a slight crop hem at the ankle, low-heeled
+      brown leather slingback sandals. Small gold huggie hoops, layered thin
+      gold necklaces visible at her collarbone, a thin gold cuff bracelet on
+      her right wrist. Hair down in soft natural waves with a slight side
+      part. Subtle bronzy daytime makeup with a touch of warm gloss.
+    pose: >-
+      Seated in the wicker chair at the bistro table, body angled three-
+      quarters toward the camera, one leg crossed over the other under the
+      table, left hand wrapped around the warm ceramic latte cup, right
+      hand resting in her lap holding the Alluvi box. Looking softly out
+      the window with a content half-smile.
+    hand_assignment:
+      phone_hand: null
+      product_hand: right
+      other_hand: left
+      other_hand_does: wraps both hands lightly around the warm ceramic latte cup
+    grip_or_placement: >-
+      Right hand rests in her lap at thigh level, the Alluvi box held flat
+      horizontally on top of her thigh with thumb on the top edge near the
+      back, index and middle fingers along the bottom face, ring and pinky
+      tucked underneath, front face angled three-quarters up toward the
+      camera. A relaxed casual hold, not a presentation grip.
+    lighting: >-
+      Soft warm morning daylight pours through the large arched window on
+      her left, gentle directional wash across her face and across the
+      bistro-table surface, warm honey tones across the white marble table
+      and across the front face of the box, deeper warm shadows on the
+      cafe interior behind her.
+    mood: slow weekday cafe pause, intentional pre-work moment
+    palette: rust orange, dark wash denim, warm white marble, golden latte foam, exposed brick
+    framing: three-quarter (chest up, bistro table surface visible at lower frame)
+    camera_height: across-table angle, chest level
+    resolves_failure_modes:
+      - "outfit lock — rust orange knit + denim completely unlike all athletic / silk / waffle existing outfits"
+      - "cafe public-space lighting Step 2 matching"
+      - "in-lap product hold rendering (different from hip-level)"
+    notes: >-
+      First scenario in the new CAFE category. Public-location vibe gives
+      ad-video narrative weight ('I take Alluvi everywhere'). Tests rust
+      orange knit + dark denim rendering and the specific in-lap product
+      hold geometry which differs from chest-level and hip-level holds.
+
+
+  # ════════════════════════════════════════════════════════════════════════
+  # TRAVEL (1 scenario — NEW category, hotel room morning)
+  # ════════════════════════════════════════════════════════════════════════
+
+  - id: travel_hotel_morning_29
+    category: travel
+    archetype: placed_on_surface
+    difficulty: medium
+    scene: >-
+      Premium boutique hotel room in the morning, soft white linen-upholstered
+      bed with rumpled cream sheets and a folded throw at the foot, a small
+      warm-wood nightstand to the right of the bed with a brass reading lamp,
+      a small ceramic dish for jewelry, a hardcover travel guidebook face-
+      down, and the Alluvi box. An open cabin-sized leather travel bag on a
+      luggage rack in the lower-left foreground with neatly folded clothes
+      visible inside. Tall floor-to-ceiling windows behind the bed open to a
+      blurred soft-focus view of a sunlit balcony with potted greenery.
+    outfit: >-
+      Soft camel-colored cashmere oversized cardigan worn open over a thin
+      white spaghetti-strap silk camisole and matching ivory satin pajama
+      shorts with a contrasting cream piping. Slouchy cream cashmere crew
+      socks pushed down slightly at her ankles. Hair down in soft natural
+      morning waves with a slight side part, a small tortoiseshell claw
+      clip holding the upper half in a half-up twist. A thin gold pendant
+      necklace, a thin gold cuff bracelet on her right wrist, no other
+      jewelry. Glowy fresh-morning skin, no makeup except a touch of
+      tinted lip balm.
+    pose: >-
+      Sitting on the edge of the hotel bed with her body angled three-
+      quarters toward the camera and slightly toward the nightstand, one
+      leg crossed casually over the other, left hand resting flat on the
+      bedsheets beside her hip, right hand brought up to her ear lightly
+      tucking a piece of hair back. Looking softly toward the nightstand
+      with a relaxed content half-smile.
+    hand_assignment:
+      phone_hand: null
+      product_hand: null
+      other_hand: both
+      other_hand_does: left rests on bedsheets, right tucks hair behind her ear
+    grip_or_placement: >-
+      The Alluvi box sits on the warm-wood nightstand directly to her right,
+      front face angled three-quarters toward the camera, positioned between
+      the brass reading lamp and the hardcover travel guidebook so it reads
+      as the central element of her morning travel arrangement. The morning
+      window light falls softly across the box's front face.
+    lighting: >-
+      Bright soft morning daylight pours through the tall floor-to-ceiling
+      windows behind the bed, backlit window with diffuse front-fill across
+      her face and the front of the bed, warm honey tones across the cream
+      sheets and the wood nightstand, gentle warm wash on the box's front
+      face. Soft cool ambient shadows on her left side.
+    mood: travel morning, unhurried hotel ritual, away-from-home routine
+    palette: camel cashmere, ivory satin, cream linen, warm wood, soft morning gold
+    framing: three-quarter (head to mid-thigh, nightstand visible at right edge, travel bag at lower-left)
+    camera_height: chest level, slight angle toward the nightstand
+    resolves_failure_modes:
+      - "outfit lock — camel cashmere + satin pajamas completely unlike all existing outfits"
+      - "travel-context narrative rendering — luggage + hotel room signals premium portable wellness"
+      - "backlit window Step 2 lighting matching"
+    notes: >-
+      First scenario in the new TRAVEL category. Hotel room signals 'I take
+      this with me' — strong ad-video narrative for portable premium wellness.
+      Tests camel cashmere + satin layering and backlit-window lighting.
+      The visible travel bag adds storytelling depth.
+
+
+  # ════════════════════════════════════════════════════════════════════════
+  # OUTDOOR continued — terrace morning (4th outdoor scenario)
+  # ════════════════════════════════════════════════════════════════════════
+
+  - id: garden_terrace_morning_30
+    category: outdoor
+    archetype: held_product_high
+    difficulty: medium
+    scene: >-
+      Private home terrace at morning golden hour, terracotta tile flooring
+      with subtle natural patina, low square planters along the edge holding
+      small ornamental olive trees and trailing rosemary, a small round
+      mosaic-topped table with a ceramic mug of coffee with steam visible
+      and a small saucer with a single fresh fig. Beyond the terrace railing,
+      a softly blurred warm Mediterranean cityscape view with terracotta
+      rooftops and soft hills in the deep background.
+    outfit: >-
+      Cream linen sleeveless midi sundress with a deep V-neckline, a thin
+      self-fabric belt cinched at the natural waist, and a relaxed A-line
+      skirt falling to mid-calf. Woven natural-fiber flat espadrille
+      sandals just visible at her ankles. Layered thin gold necklaces of
+      varying lengths visible at her collarbone, a thin gold cuff bracelet
+      on her left wrist, small gold huggie hoops. Hair down in soft natural
+      beach waves with a slight side part, no makeup except a touch of
+      bronzer and tinted lip balm for a glowy bronzed look.
+    pose: >-
+      Standing on the terrace at a slight three-quarter angle to the camera,
+      weight on her right leg with her left foot slightly forward, left hand
+      resting lightly on the low planter wall to her left, body angled toward
+      the soft view beyond, looking softly toward the box held at chest level
+      with a serene content smile.
+    hand_assignment:
+      phone_hand: null
+      product_hand: right
+      other_hand: left
+      other_hand_does: rests lightly on the low planter wall to her left
+    grip_or_placement: >-
+      Right hand at upper-chest level held slightly forward of her body,
+      thumb pressed flat on the front face of the box near the top edge,
+      index and middle fingers on the back edge, ring and pinky tucked
+      under the bottom edge, box held vertically (long side vertical) with
+      the front face angled gently toward the camera, catching the warm
+      morning sun directly.
+    lighting: >-
+      Strong warm morning golden-hour sunlight from a low angle on her
+      right, directional warm wash across her right side and across the
+      front face of the box creating a warm golden rim, deep amber tones
+      across the terracotta tiles, soft cool sky-blue ambient fill from
+      above and the cityscape behind her.
+    mood: morning golden-hour terrace ritual, serene Mediterranean energy
+    palette: cream linen, terracotta tile, olive green, warm golden morning, soft sky
+    framing: medium full (mid-thigh up, terrace surface and planters visible)
+    camera_height: chest level, slight three-quarter angle
+    resolves_failure_modes:
+      - "outfit lock — cream linen sundress completely unlike all existing outfits"
+      - "strong directional warm morning light Step 2 matching"
+      - "vertically oriented box hold (long side vertical instead of horizontal)"
+    notes: >-
+      Fourth scenario in OUTDOOR category. Distinctly different from the park
+      walk (25), smoothie bar (26), and patio (27) — home-terrace
+      Mediterranean morning vibe. Tests linen sundress drape, strong morning
+      directional light, and vertical box orientation.

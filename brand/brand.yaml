@@ -1,0 +1,277 @@
+# =============================================================================
+# ALLUVI HEALTHCARE — BRAND CONTEXT
+# =============================================================================
+# This file is the single source of truth for brand identity.
+# Loaded into every Claude prompt-building call. Edit here, no code changes.
+# Last updated: May 2026
+# =============================================================================
+
+brand:
+  name: Alluvi
+  legal_name: Alluvi Healthcare
+  country: United Kingdom
+  category: premium_research_peptides
+  founded_positioning: "UK-based peptide researchers solving the gap of unreliable overseas suppliers"
+
+  # Legal/compliance positioning — CRITICAL
+  # Alluvi sells products as "research-grade, R&D only, not for human consumption."
+  # This is the regulatory framing required because most injectable peptides
+  # are not FDA/MHRA-approved for retail human use. Real customers do use them,
+  # but ad creative MUST NOT cross compliance lines. See do_dont.md.
+  regulatory_framing: "research_compounds_not_for_human_consumption"
+  ad_creative_framing: "aspirational_wellness_lifestyle_no_medical_claims"
+
+  # The brand split in one sentence:
+  # PACKAGING SAYS: "for laboratory research only, not for human use"
+  # AD CREATIVE FEELS: "premium wellness brand for people optimizing their lives"
+  # Both are simultaneously true and must coexist in every piece of content.
+
+# =============================================================================
+# VISUAL IDENTITY
+# =============================================================================
+
+visual_identity:
+
+  # Brand color system — different products use different palettes.
+  # The persona's product (BPC-157 & TB-500) is the GREEN palette.
+  # Other products use orange-amber (Retatrutide) or warm-white (Tirzepatide).
+  # When in doubt, defer to the actual product reference photo's colors.
+
+  master_palette:
+    brand_white: "#FFFFFF"       # primary background, packaging dominant
+    charcoal_text: "#2C2C2C"     # primary typography
+    soft_neutral: "#F5F1EA"      # warm-cream secondary
+    medical_clean: "#FAFAFA"     # near-white surface tone
+
+  product_palettes:
+    retatrutide_orange:           # for Retatrutide weight-management line
+      primary: "#E89B4C"          # amber-orange
+      secondary: "#F4C97A"        # honey gold
+      accent: "#D4541E"           # deep terracotta
+    bpc_tb500_green:              # CURRENT PRODUCT — recovery line
+      primary: "#5BB85C"          # vibrant healing green
+      secondary: "#3D8F3F"        # deeper forest green
+      accent: "#A8D5A9"           # soft sage highlight
+    tirzepatide_warm_white:       # for Tirzepatide line
+      primary: "#FAF6EE"          # warm bone
+      secondary: "#D4B896"        # latte beige
+      accent: "#8A6F4D"           # toasted oak
+
+  # Visual texture & material language — what the brand world LOOKS like
+  material_language:
+    - "soft natural daylight, never harsh studio lighting"
+    - "matte ceramic surfaces (not glossy plastic)"
+    - "linen, cotton, brushed stone, light wood"
+    - "white marble counters, oat-toned bathroom tile"
+    - "clear glass water bottles, ceramic matcha cups"
+    - "Alo Yoga / Lululemon / Set Active athleisure as wardrobe context"
+
+  forbidden_visual_associations:
+    - "clinical hospital lighting, fluorescent overheads"
+    - "medical waste, sharps bins, syringes prominent in frame"
+    - "pill bottles or pharmacy aesthetics (this is wellness, not medicine)"
+    - "before/after split frames, weight-loss transformation imagery"
+    - "gym equipment too aggressive (squat racks, deadlifts) — favor pilates, light weights, treadmill, reformer"
+    - "alcohol, fast food, overly processed snacks anywhere in frame"
+
+# =============================================================================
+# VOICE & TONE
+# =============================================================================
+
+voice:
+
+  # The brand voice persona — used for any ad copy, captions, scripts
+  archetype: "the wellness-confident insider"
+  description: |
+    Speaks like an early-thirties woman who works in adjacent wellness
+    industries (pilates studio owner, holistic nutritionist, brand strategist).
+    She has done her research, she knows what's effective, she shares what
+    works without overselling. She is calm, grounded, slightly aspirational
+    but never performative. She would never call her supplements "miracle"
+    or "life-changing" — she'd say "this is part of my routine" or "I notice
+    a difference in my recovery." Confident understatement, not hype.
+
+  tone_attributes:
+    - calm
+    - grounded
+    - quietly confident
+    - educated
+    - warm but not chatty
+    - aspirational without pressure
+    - lifestyle-first, science-second
+
+  forbidden_tone_attributes:
+    - hype-driven
+    - urgent ("buy now," "limited time")
+    - shouty / sales-y
+    - cringe ("girlies," "literally obsessed")
+    - bro-science / locker-room
+    - fear-based ("are YOU still struggling with...")
+    - guru / coach-speak
+
+# =============================================================================
+# VOCABULARY
+# =============================================================================
+
+vocabulary:
+
+  # Words and phrases that fit the brand
+  preferred_words:
+    - "routine"
+    - "supports"
+    - "part of my recovery"
+    - "wellness protocol"
+    - "longevity"
+    - "research-grade"
+    - "premium"
+    - "intentional"
+    - "consistency"
+    - "training routine"
+    - "post-pilates"
+    - "post-workout recovery"
+    - "I've been using"
+    - "noticing the difference"
+    - "lab-tested"
+    - "cold-chain delivery"
+    - "Janoshik tested"  # genuine differentiator — third-party purity testing
+
+  # Words and phrases the brand never uses
+  forbidden_words:
+    - "miracle"
+    - "guaranteed"
+    - "cure"
+    - "treats" / "treatment for"
+    - "fix" / "fixes"
+    - "lose 20 pounds"
+    - "shed fat"
+    - "skinny"
+    - "before/after"
+    - "doctor recommended"  # legally fraught; we are not medical
+    - "FDA approved"  # we are not
+    - "MHRA approved"  # we are not
+    - "side effects" anything (not our topic to discuss in creative)
+    - "Ozempic alternative"  # do not name competitors
+    - "transformation"
+    - "results in X days"
+
+# =============================================================================
+# TARGET CUSTOMER PROFILE
+# =============================================================================
+
+target_customer:
+
+  primary_persona: "the optimizer"
+  primary_demographic:
+    age_band: "27-42"
+    gender_split: "60% female, 40% male"
+    income_band: "£60k+ household"
+    geography: "UK primarily, expanding EU"
+    psychographic: |
+      Already eats well, trains 3-5x per week, has a skincare routine,
+      reads Andrew Huberman and Peter Attia content, may have tried
+      cold plunge or sauna, follows pilates/wellness creators on TikTok,
+      treats their body as a project. Comfortable spending £80-£200/month
+      on wellness optimization. Skeptical of generic supplements,
+      drawn to research-backed compounds with credible sourcing.
+
+  use_cases_to_emphasize:
+    bpc_tb500_recovery:
+      - "post-pilates / post-gym recovery routine"
+      - "tendon and joint resilience for active lifestyles"
+      - "longevity-minded recovery stack"
+    retatrutide:
+      - "metabolic health, body composition recomposition"
+      - "appetite regulation as part of intentional eating"
+    tirzepatide:
+      - "research-grade dual-receptor compound, scientifically interesting"
+    glow_ghk_cu:
+      - "skin glow, anti-aging routine"
+      - "longevity-focused beauty"
+
+  use_cases_to_avoid:
+    - "weight loss for an event / wedding / holiday"
+    - "dramatic body transformation narratives"
+    - "fixing a medical condition"
+    - "anything that sounds desperate or rapid-fix"
+
+# =============================================================================
+# DIFFERENTIATION
+# =============================================================================
+
+differentiation_pillars:
+
+  - pillar: "UK-based, not overseas"
+    proof_point: "Tracked 2-day UK delivery from a real UK lab"
+    use_in_ads: "subtly — show UK setting context, do not state explicitly in voiceover"
+
+  - pillar: "Independently verified purity"
+    proof_point: "99.38% HPLC purity, exceeding the ≥98% guarantee, Janoshik third-party tested"
+    use_in_ads: "subtly — packaging visible, occasional caption mention"
+
+  - pillar: "Cold-chain integrity"
+    proof_point: "Dispatched with cold pack, refrigerated 2-8°C"
+    use_in_ads: "implicit — show product in fridge / on cool counter when context fits"
+
+  - pillar: "Peptide stack expertise, not generic supplement"
+    proof_point: "Curated stacks (Wolverine, Glow, KLOW) for specific outcomes"
+    use_in_ads: "implied through visual sophistication and care of presentation"
+
+# =============================================================================
+# 2026 MARKET CONTEXT
+# =============================================================================
+
+market_context_2026:
+
+  category_growth: |
+    Peptide therapy grew 459% on TikTok and 412% on Instagram in 2026.
+    BPC-157, TB-500, and GLP-1s have moved from niche biohacker protocols
+    into mainstream wellness conversation. Joe Rogan, Jeremy Renner, and
+    Forma Pilates founder Liana Levi have all publicly discussed peptide use.
+
+  the_wolverine_stack: |
+    BPC-157 + TB-500 (our current product) is widely known as the
+    "Wolverine stack" — named for its tissue repair and recovery effects.
+    Users discuss it on TikTok in recovery, post-injury, post-pilates,
+    and longevity contexts. Avoid the meme name in formal creative,
+    but understand that the audience already speaks this language.
+
+  the_glow_protocol: |
+    GHK-Cu (Alluvi Glow product line) is associated with the "glow protocol"
+    on TikTok — anti-aging, skin firmness, longevity beauty.
+
+  ad_climate_caution: |
+    TikTok's prohibited products policy explicitly forbids
+    "products and supplements that claim to aid in weight management,
+    fat reduction, or similar goals." Our creative must NEVER make
+    such claims directly. Frame everything as recovery, longevity,
+    routine, or aspirational lifestyle — never weight management.
+
+# =============================================================================
+# COMPETITIVE REFERENCE POINTS
+# =============================================================================
+# Brands whose visual / tonal language we share (so trend matching has anchors)
+
+competitive_aesthetic_anchors:
+  - "Alo Yoga (athleisure aesthetic)"
+  - "Rhode Skin (Hailey Bieber's brand — clean girl)"
+  - "Forma Pilates (pilates studio aesthetic)"
+  - "Eight Sleep (premium wellness optimization)"
+  - "Athletic Greens / AG1 (premium daily routine product)"
+  - "Hims & Hers (clinical-but-lifestyle wellness)"
+
+# =============================================================================
+# PRODUCT PORTFOLIO REFERENCE
+# =============================================================================
+# Loaded for context; full product spec lives in /products/{id}/product.yaml
+
+products_in_portfolio:
+  - retatrutide_20mg
+  - retatrutide_40mg
+  - tirzepatide_20mg
+  - tirzepatide_40mg
+  - bpc157_tb500_40mg          # MVP active product
+  - glow_ghk_cu_70mg
+  - klow_stack_80mg
+  - nad_plus
+  - protein_gummies
+  - alluvi_supplement_box

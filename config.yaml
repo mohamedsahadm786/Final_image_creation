@@ -1,0 +1,49 @@
+# config.yaml — Alluvi Final Image Generation Pipeline
+#
+# Configures both stages:
+#   Stage 1: fal-ai/flux-pulid — persona scene generation
+#   Stage 2: fal-ai/qwen-image-edit-2511 — product compositing
+#
+# Per-scenario, Opus 4.7 builds prompt envelopes that may override the
+# defaults below. For example, the Step 1 master prompt emits per-scenario
+# `fal_pulid_params` with scenario-specific id_weight (1.0 for persona shots,
+# 0.5 for flat-lays) and per-scenario true_cfg (1.5 medium, 1.7 close-up).
+# Those overrides win when present; defaults are only used as fallback.
+
+pipeline_name: alluvi_final_image_generation
+model_label: "PuLID + Qwen-Image-Edit-2511 (qwen-tuned prompt)"
+
+# Per-scenario cost estimate (used for pre-flight cost confirmation)
+cost_per_scenario_usd: 0.36      # = opus_step_1 ($0.10) + pulid ($0.04) + opus_step_2 ($0.18) + qwen ($0.04)
+
+step_1:
+  endpoint: fal-ai/flux-pulid
+  cost_per_image_usd: 0.04       # PuLID API call (production-verified)
+  cost_per_prompt_opus_usd: 0.10 # Opus call to build the Step 1 prompt
+
+  # Defaults — overridden per-scenario by Opus-emitted fal_pulid_params
+  defaults:
+    image_size:
+      width: 768
+      height: 1344
+    num_inference_steps: 30
+    guidance_scale: 3.5
+    id_weight: 1.0
+    true_cfg: 1.5
+    max_sequence_length: "256"
+    enable_safety_checker: true
+    output_format: "jpeg"
+    num_images: 1
+
+step_2:
+  endpoint: fal-ai/qwen-image-edit-2511
+  cost_per_image_usd: 0.04       # Qwen API call estimate
+  cost_per_prompt_opus_usd: 0.18 # Opus call to build the Step 2 prompt
+
+  defaults:
+    image_size:
+      width: 768
+      height: 1344
+    num_images: 1
+    output_format: "png"
+    enable_safety_checker: true
