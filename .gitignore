@@ -1,28 +1,13 @@
-# Secrets
 .env
-
-# Runtime artifacts
-cache/
-outputs/
+.env.local
+ollama_flow/.env
 data/
-
-# Python
+outputs/
+cache/
+hf_cache/
+*.log
 __pycache__/
-*.py[cod]
-*$py.class
-*.egg-info/
-.pytest_cache/
-
-# Virtual environments
-.venv/
+*.pyc
+*.pyo
 venv/
-env/
-
-# IDE
-.vscode/
-.idea/
-*.swp
-
-# OS
-.DS_Store
-Thumbs.db
+.venv/

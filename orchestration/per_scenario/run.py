@@ -1,26 +1,25 @@
 """
-run.py — single-scenario end-to-end CLI for the Alluvi image generation pipeline.
+orchestration/per_scenario/run.py — single-scenario end-to-end CLI for the
+Alluvi LOCAL image generation pipeline.
 
-Pipeline per scenario (matches production run_plan_a.py's per-scenario flow,
-but with Step 2 swapped from Nano Banana to Qwen-tuned, and using the new
-db.py for SQLite state tracking):
+Per-scenario flow (one scenario through all 3 stages, load each stage's
+model just-in-time, unload before the next):
 
   1. Load + validate the scenario from scenarios/scenarios.yaml by id
   2. Call Opus 4.7 with master_prompt_step1.md → Step 1 prompt envelope
-  3. Call fal-ai/flux-pulid → 03_step1_persona.jpg (persona in scene)
+  3. Load FLUX.1-dev + PuLID → 03_step1_persona.jpg → unload
   4. Call Opus 4.7 with master_prompt_step2_qwen.md → Step 2 prompt envelope
-  5. Call fal-ai/qwen-image-edit-2511 → 05_step2_final.jpg (product composited)
-  6. QC validation (Sonnet 4.6 vision) with up to 2 Stage 2 retries
-  7. Call fal-ai/flux-pro/kontext → 07_step3_realism.jpg (photoreal pass, if QC passed)
+  5. Load Qwen-Image-Edit-2511 → 05_step2_final.jpg (+ QC retries) → unload
+  6. QC validation (Sonnet 4.6 vision) — Qwen pipeline kept resident across retries
+  7. Load FLUX.1-Kontext-dev → 07_step3_realism.jpg → unload (only if QC passed)
   8. Write chain.html + persist run + generation rows in data/alluvi.db
 
-Cost: ~$0.40 per scenario.
-Wall time: ~90-120s.
+LLM cost: ~$0.28/scenario (Opus 4.7 prompts + Sonnet 4.6 QC)
+GPU wall time: ~3-5 min/scenario (mostly model load/unload + inference)
+Peak VRAM: ~48 GB (Qwen Stage 2 is the largest)
 
 Usage (from repo root):
-    python run.py --scenario bedroom_robe_with_product_13
-
-For batch processing of multiple scenarios, see run_batch.py.
+    python orchestration/per_scenario/run.py --scenario bedroom_robe_with_product_13
 """
 
 import argparse
@@ -34,7 +33,8 @@ import yaml
 from datetime import datetime
 from pathlib import Path
 
-REPO_ROOT = Path(__file__).resolve().parent
+# Walk up from orchestration/per_scenario/run.py to repo root
+REPO_ROOT = Path(__file__).resolve().parents[2]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
@@ -44,13 +44,15 @@ from src import step_1_prompt_builder
 from src import step_1_pulid
 from src import step_2_prompt_builder
 from src import step_2_qwen_edit
+from src import step_3_realism
 from src import trace_html
+from src import vram_utils
 
 
 CONFIG_PATH = REPO_ROOT / "config.yaml"
 OUTPUT_ROOT = REPO_ROOT / "outputs"
 
-PLAN_LABEL = "pulid_qwen_tuned"  # for db.runs.plan + db.generations.plan
+PLAN_LABEL = "pulid_qwen_kontext_local"
 
 
 def _load_config() -> dict:
@@ -60,11 +62,8 @@ def _load_config() -> dict:
 
 
 # ─── JSON retry config ────────────────────────────────────────────────────
-# Opus very rarely produces malformed JSON, but we add the same retry guard
-# the Ollama flow uses so the behavior is consistent across providers.
-# Retries cost ~$0.10-$0.28 per attempt (Opus is not free) so we cap at 1
-# retry. Most scenarios succeed on the first try; the retry is insurance
-# against transient API issues.
+# Opus very rarely produces malformed JSON, but the retry guard is kept for
+# consistency with the Ollama flow. 1 retry is the cap (Opus is not free).
 MAX_JSON_RETRIES = 1
 
 
@@ -74,11 +73,7 @@ def _call_with_json_retry(
     step_label: str,
     max_retries: int = MAX_JSON_RETRIES,
 ):
-    """
-    Call build_fn() and retry only on JSONSanityError. Other exceptions
-    propagate immediately. See docstring in ollama_flow/run_ollama.py for
-    full rationale.
-    """
+    """Call build_fn() and retry only on JSONSanityError. Other exceptions propagate."""
     from src.json_utils import JSONSanityError
 
     last_error = None
@@ -109,37 +104,22 @@ def process_scenario(
 ) -> dict:
     """
     Run the full pipeline for one scenario. Never raises — returns a record
-    dict with `final_status` set to "success" or "failed", plus `error_stage`
-    and `error_message` populated on failure.
+    dict with `final_status` set to "success" / "qc_failed" / "failed".
 
-    Stages tracked (matches production):
-      scenario_save / step_1_prompt / step_1_pulid / step_2_prompt / step_2_qwen / qc / step_3_realism
-
-    DB state is written incrementally at every stage transition, so even on
-    crash you have a partial trail in data/alluvi.db.
-
-    Args:
-        scenario: validated scenarios.yaml entry
-        output_dir: directory to write outputs into (created if missing)
-        config: parsed config.yaml dict
-        run_id: parent run id (from db.create_run)
-
-    Returns:
-        record dict — always returned, even on failure. Has `gen_id` populated.
+    Pipeline objects are loaded just-in-time per stage and unloaded before
+    the next stage starts. Peak VRAM stays around 48 GB (Qwen Stage 2).
     """
     scenario_id = scenario.get("id", "?")
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    # Create the generation row first (single-source-of-truth handle in DB)
     gen_id = uuid.uuid4().hex
     try:
         db.create_generation(gen_id, run_id, scenario_id, PLAN_LABEL)
     except Exception as e:
-        # DB unavailable is fatal for this scenario
         print(f"[run] {scenario_id}: DB create_generation failed: {e}")
         return {
             "scenario": scenario,
-            "model_label": config.get("model_label", "PuLID + Qwen"),
+            "model_label": config.get("model_label", "PuLID + Qwen + Kontext (local)"),
             "output_dir": str(output_dir),
             "gen_id": gen_id,
             "run_id": run_id,
@@ -150,7 +130,7 @@ def process_scenario(
 
     record: dict = {
         "scenario": scenario,
-        "model_label": config.get("model_label", "PuLID + Qwen"),
+        "model_label": config.get("model_label", "PuLID + Qwen + Kontext (local)"),
         "output_dir": str(output_dir),
         "gen_id": gen_id,
         "run_id": run_id,
@@ -201,14 +181,20 @@ def process_scenario(
     record["step_1_output"] = step_1_output
     db.update_step_1(gen_id, status="prompt_built", prompt=step_1_text)
 
-    # 3. Stage 1: PuLID
+    # ─── 3. Stage 1: local FLUX.1-dev + PuLID ──────────────────────────
     pulid_params = step_1_output.get("fal_pulid_params") or config.get(
         "step_1", {}
     ).get("defaults", {})
     persona_out_path = output_dir / "03_step1_persona.jpg"
 
+    step_1_pipeline = None
     try:
+        vram_utils.reset_vram_peak()
+        step_1_pipeline = step_1_pulid.load_pipeline()
+        vram_utils.report_vram("step 1 loaded")
+
         step_1_meta = step_1_pulid.generate(
+            pipeline=step_1_pipeline,
             step_1_prompt=step_1_text,
             fal_pulid_params=pulid_params,
             out_path=persona_out_path,
@@ -222,6 +208,11 @@ def process_scenario(
         db.update_step_1(gen_id, status="failed", error=record["error_message"])
         db.finalize_generation(gen_id, "failed", record["error_message"])
         return record
+    finally:
+        if step_1_pipeline is not None:
+            vram_utils.unload_pipeline(step_1_pipeline)
+            step_1_pipeline = None
+            vram_utils.report_vram("step 1 unloaded")
 
     (output_dir / "03_step1_meta.json").write_text(
         json.dumps(step_1_meta, indent=2, ensure_ascii=False), encoding="utf-8"
@@ -273,15 +264,8 @@ def process_scenario(
     db.update_step_2(gen_id, status="prompt_built", prompt=step_2_text)
 
     # ─── 5+6. Stage 2 (Qwen) + QC with retry loop ──────────────────────
-    # Strategy: run Qwen; QC the result; if QC fails, re-run Qwen with the
-    # SAME persona image (free of PuLID cost — we keep Step 1 output).
-    # Max 2 retries after the initial attempt (3 Qwen calls worst case).
-    # On all-fail: mark scenario as qc_failed and skip — don't crash batch.
-    #
-    # Each attempt's output is saved:
-    #   05_step2_final.jpg            ← latest accepted image (overwritten)
-    #   05_step2_final_attempt_N.jpg  ← per-attempt image kept for review
-    #   06_qc_result_attempt_N.json   ← per-attempt QC result
+    # Pipeline loaded ONCE, kept resident across QC retries (don't reload
+    # between attempts — that's the whole point of per-stage load policy).
     qwen_params = step_2_output.get("fal_qwen_params") or config.get(
         "step_2", {}
     ).get("defaults", {})
@@ -293,94 +277,106 @@ def process_scenario(
     final_qc_result: dict | None = None
     final_step_2_meta: dict | None = None
 
-    for attempt in range(1, MAX_QC_RETRIES + 2):  # 1, 2, 3
-        attempt_image_path = output_dir / f"05_step2_final_attempt_{attempt}.jpg"
-        is_last_attempt = attempt == MAX_QC_RETRIES + 1
+    step_2_pipeline = None
+    try:
+        vram_utils.reset_vram_peak()
+        step_2_pipeline = step_2_qwen_edit.load_pipeline()
+        vram_utils.report_vram("step 2 loaded")
 
-        # Run Qwen (Stage 2)
-        try:
-            step_2_meta = step_2_qwen_edit.generate(
-                step_1_local_path=str(persona_out_path),
-                step_2_prompt=step_2_text,
-                fal_qwen_params=qwen_params,
-                out_path=attempt_image_path,
-                scenario_id=f"{scenario_id}#a{attempt}",
+        for attempt in range(1, MAX_QC_RETRIES + 2):  # 1, 2, 3
+            attempt_image_path = output_dir / f"05_step2_final_attempt_{attempt}.jpg"
+            is_last_attempt = attempt == MAX_QC_RETRIES + 1
+
+            # Run Qwen (Stage 2)
+            try:
+                step_2_meta = step_2_qwen_edit.generate(
+                    pipeline=step_2_pipeline,
+                    step_1_local_path=str(persona_out_path),
+                    step_2_prompt=step_2_text,
+                    fal_qwen_params=qwen_params,
+                    out_path=attempt_image_path,
+                    scenario_id=f"{scenario_id}#a{attempt}",
+                )
+            except Exception as e:
+                record["final_status"] = "failed"
+                record["error_stage"] = "step_2_qwen"
+                record["error_message"] = (
+                    f"Qwen Stage 2 failed on attempt {attempt}: {type(e).__name__}: {e}"
+                )
+                traceback.print_exc()
+                db.update_step_2(gen_id, status="failed", error=record["error_message"])
+                db.finalize_generation(gen_id, "failed", record["error_message"])
+                return record  # finally still unloads the pipeline
+
+            # Copy this attempt to the canonical filename
+            try:
+                import shutil
+                shutil.copy(attempt_image_path, final_out_path)
+            except Exception as e:
+                print(f"[run] {scenario_id}: copy attempt image failed (non-fatal): {e}")
+
+            final_step_2_meta = step_2_meta
+
+            # Run QC (or skip if disabled)
+            if not qc_enabled:
+                print(f"[run] {scenario_id}: QC disabled, accepting attempt {attempt}")
+                final_qc_result = {
+                    "passed": True, "score": None, "issues": [],
+                    "recommendation": "use", "error": "QC_ENABLED=false",
+                }
+                break
+
+            try:
+                from src.qc_validator import validate_image
+                qc_result = validate_image(
+                    final_out_path,
+                    scenario_id=f"{scenario_id}#a{attempt}",
+                )
+            except Exception as e:
+                print(f"[run] {scenario_id}: QC call crashed on attempt {attempt}: {e}")
+                qc_result = {
+                    "passed": True,  # treat infra failure as pass — don't punish
+                    "score": 0.5,
+                    "issues": [f"QC crashed: {e}"],
+                    "recommendation": "use",
+                    "error": str(e),
+                }
+
+            # Persist this attempt's QC result
+            (output_dir / f"06_qc_result_attempt_{attempt}.json").write_text(
+                json.dumps(qc_result, indent=2, ensure_ascii=False), encoding="utf-8"
             )
-        except Exception as e:
-            record["final_status"] = "failed"
-            record["error_stage"] = "step_2_qwen"
-            record["error_message"] = (
-                f"Qwen Stage 2 failed on attempt {attempt}: {type(e).__name__}: {e}"
-            )
-            traceback.print_exc()
-            db.update_step_2(gen_id, status="failed", error=record["error_message"])
-            db.finalize_generation(gen_id, "failed", record["error_message"])
-            return record
+            qc_attempts.append({
+                "attempt": attempt,
+                "passed": qc_result.get("passed"),
+                "score": qc_result.get("score"),
+                "issues": qc_result.get("issues", []),
+            })
 
-        # Copy this attempt to the canonical filename
-        try:
-            import shutil
-            shutil.copy(attempt_image_path, final_out_path)
-        except Exception as e:
-            print(f"[run] {scenario_id}: copy attempt image failed (non-fatal): {e}")
+            if qc_result.get("passed"):
+                print(f"[run] {scenario_id}: QC PASSED on attempt {attempt}")
+                final_qc_result = qc_result
+                break
 
-        final_step_2_meta = step_2_meta
-
-        # Run QC (or skip if disabled)
-        if not qc_enabled:
-            print(f"[run] {scenario_id}: QC disabled, accepting attempt {attempt}")
-            final_qc_result = {
-                "passed": True, "score": None, "issues": [],
-                "recommendation": "use", "error": "QC_ENABLED=false",
-            }
-            break
-
-        try:
-            from src.qc_validator import validate_image
-            qc_result = validate_image(
-                final_out_path,
-                scenario_id=f"{scenario_id}#a{attempt}",
-            )
-        except Exception as e:
-            print(f"[run] {scenario_id}: QC call crashed on attempt {attempt}: {e}")
-            qc_result = {
-                "passed": True,  # treat infra failure as pass — don't punish
-                "score": 0.5,
-                "issues": [f"QC crashed: {e}"],
-                "recommendation": "use",
-                "error": str(e),
-            }
-
-        # Persist this attempt's QC result
-        (output_dir / f"06_qc_result_attempt_{attempt}.json").write_text(
-            json.dumps(qc_result, indent=2, ensure_ascii=False), encoding="utf-8"
-        )
-        qc_attempts.append({
-            "attempt": attempt,
-            "passed": qc_result.get("passed"),
-            "score": qc_result.get("score"),
-            "issues": qc_result.get("issues", []),
-        })
-
-        if qc_result.get("passed"):
-            print(f"[run] {scenario_id}: QC PASSED on attempt {attempt}")
-            final_qc_result = qc_result
-            break
-
-        # QC failed
-        if is_last_attempt:
-            print(
-                f"[run] {scenario_id}: QC failed on final attempt "
-                f"{attempt}/{MAX_QC_RETRIES + 1} — skipping scenario"
-            )
-            final_qc_result = qc_result
-        else:
-            print(
-                f"[run] {scenario_id}: QC failed on attempt "
-                f"{attempt}/{MAX_QC_RETRIES + 1} — retrying Stage 2 only"
-            )
-            for issue in qc_result.get("issues", []):
-                print(f"  - {issue}")
+            # QC failed
+            if is_last_attempt:
+                print(
+                    f"[run] {scenario_id}: QC failed on final attempt "
+                    f"{attempt}/{MAX_QC_RETRIES + 1} — skipping scenario"
+                )
+                final_qc_result = qc_result
+            else:
+                print(
+                    f"[run] {scenario_id}: QC failed on attempt "
+                    f"{attempt}/{MAX_QC_RETRIES + 1} — retrying Stage 2 only"
+                )
+                for issue in qc_result.get("issues", []):
+                    print(f"  - {issue}")
+    finally:
+        if step_2_pipeline is not None:
+            vram_utils.unload_pipeline(step_2_pipeline)
+            step_2_pipeline = None
+            vram_utils.report_vram("step 2 unloaded")
 
     # Save the final canonical QC result + step_2_meta
     if final_qc_result:
@@ -436,25 +432,22 @@ def process_scenario(
         except Exception as e:
             print(f"[run] {scenario_id}: QC db update failed (non-fatal): {e}")
 
-    # ─── 7. Stage 3: realism refinement pass (only if QC passed) ────────
-    # FLUX.1 Kontext Pro instruction-based editing adds photoreal texture
-    # while preserving composition, identity, and product text.
-    # Skipped if QC failed (no point refining a broken image).
-    # Skipped if STEP_3_ENABLED=false. Non-fatal on error — Step 2 output
-    # remains the canonical final image in that case.
+    # ─── 7. Stage 3: local FLUX.1-Kontext-dev (only if QC passed) ──────
     step_3_enabled = os.getenv("STEP_3_ENABLED", "true").lower() == "true"
     qc_passed = bool(final_qc_result and final_qc_result.get("passed"))
 
     if step_3_enabled and qc_passed:
+        step_3_pipeline = None
         try:
-            from src import step_3_realism
+            vram_utils.reset_vram_peak()
+            step_3_pipeline = step_3_realism.load_pipeline()
+            vram_utils.report_vram("step 3 loaded")
 
             step_3_out_path = output_dir / "07_step3_realism.jpg"
-            # Pull lighting hint from the scenario for consistency with the
-            # intended scene lighting (helps Kontext preserve mood).
             lighting_hint = (scenario.get("lighting") or "").strip() or None
 
             step_3_meta = step_3_realism.generate(
+                pipeline=step_3_pipeline,
                 step_2_local_path=str(final_out_path),
                 out_path=step_3_out_path,
                 scenario_id=scenario_id,
@@ -479,8 +472,12 @@ def process_scenario(
             traceback.print_exc()
             record["step_3_meta"] = {"error": str(e)}
             record["final_image_path"] = str(final_out_path)
+        finally:
+            if step_3_pipeline is not None:
+                vram_utils.unload_pipeline(step_3_pipeline)
+                step_3_pipeline = None
+                vram_utils.report_vram("step 3 unloaded")
     else:
-        # Step 3 skipped: either disabled, or QC failed
         record["final_image_path"] = str(final_out_path)
         if not step_3_enabled:
             print(f"[run] {scenario_id}: Stage 3 disabled (STEP_3_ENABLED=false)")
@@ -488,7 +485,6 @@ def process_scenario(
             print(f"[run] {scenario_id}: Stage 3 skipped (QC did not pass)")
 
     # 8. chain.html — single-scenario layout: outputs/<ts>_<sid>/chain.html
-    # → 2 levels up to repo root → assets/persona.jpg
     try:
         trace_html.write_chain_html(
             output_dir, record, persona_rel_path="../../assets/persona.jpg"
@@ -502,8 +498,8 @@ def process_scenario(
 def main() -> int:
     parser = argparse.ArgumentParser(
         description=(
-            "Run the full Alluvi image generation pipeline (PuLID + Qwen + Kontext) "
-            "for one scenario."
+            "Run the full Alluvi LOCAL image generation pipeline "
+            "(FLUX+PuLID + Qwen-Edit + Kontext) for one scenario."
         )
     )
     parser.add_argument(
@@ -516,12 +512,10 @@ def main() -> int:
 
     config = _load_config()
 
-    # Production-style: load + validate via scenario_loader, then find by id
     try:
         scenario = scenario_loader.load_scenario(args.scenario)
     except (FileNotFoundError, ValueError) as e:
         print(f"[run] {e}")
-        # Best-effort: show available IDs to help the user
         try:
             all_scenarios = scenario_loader.load_scenarios()
             ids = [s.get("id") for s in all_scenarios]
@@ -538,20 +532,19 @@ def main() -> int:
 
     print("")
     print("=" * 72)
-    print(f" ALLUVI — SINGLE SCENARIO RUN")
+    print(f" ALLUVI — SINGLE SCENARIO RUN (local pipeline)")
     print(f" Scenario  : {args.scenario}")
     print(f" Run id    : {run_id}")
     print(f" Output dir: {output_dir}")
     print("=" * 72)
     print("")
 
-    # Create the run row in DB
     try:
         db.create_run(
             run_id=run_id,
             plan=PLAN_LABEL,
             pilot_mode=False,
-            notes=f"single scenario: {args.scenario}",
+            notes=f"single scenario (local): {args.scenario}",
         )
     except Exception as e:
         print(f"[run] DB create_run failed: {e}")
@@ -566,12 +559,11 @@ def main() -> int:
     step_2_meta = record.get("step_2_meta") or {}
     step_3_meta = record.get("step_3_meta") or {}
 
-    # Calculate actual cost for this single-scenario run
+    # Local LLM cost only — GPU time tracked at batch level (pod $/hr × wall hours)
     actual_cost = float(step_1_meta.get("cost_usd") or 0.0)
     actual_cost += float(step_2_meta.get("cost_usd") or 0.0)
     if isinstance(step_3_meta, dict) and not step_3_meta.get("error"):
         actual_cost += float(step_3_meta.get("cost_usd") or 0.0)
-    # Add Opus prompt costs (configured estimates, not metered)
     c_opus_1 = config.get("step_1", {}).get("cost_per_prompt_opus_usd", 0.10)
     c_opus_2 = config.get("step_2", {}).get("cost_per_prompt_opus_usd", 0.18)
     if record.get("step_1_output"):
@@ -579,7 +571,6 @@ def main() -> int:
     if record.get("step_2_output"):
         actual_cost += c_opus_2
 
-    # Finalize run
     try:
         db.finalize_run(
             run_id=run_id,
@@ -603,11 +594,11 @@ def main() -> int:
         s1_t = step_1_meta.get("elapsed_seconds", 0)
         s2_t = step_2_meta.get("elapsed_seconds", 0)
         s3_t = step_3_meta.get("elapsed_seconds", 0) if isinstance(step_3_meta, dict) else 0
-        print(f"  step 1:     {s1_t:.1f}s (PuLID)")
-        print(f"  step 2:     {s2_t:.1f}s (Qwen)")
+        print(f"  step 1:     {s1_t:.1f}s (PuLID, local)")
+        print(f"  step 2:     {s2_t:.1f}s (Qwen, local)")
         if s3_t:
-            print(f"  step 3:     {s3_t:.1f}s (Kontext)")
-        print(f"  cost:       ${actual_cost:.3f}")
+            print(f"  step 3:     {s3_t:.1f}s (Kontext, local)")
+        print(f"  cost:       ${actual_cost:.3f}  (LLM only — GPU time at batch level)")
         qc = record.get("qc_result") or {}
         if qc:
             print(f"  qc:         PASSED (score={qc.get('score')})")
@@ -616,7 +607,7 @@ def main() -> int:
         attempts = record.get("qc_attempts") or []
         print(f"  step 1:     {step_1_meta.get('elapsed_seconds', 0):.1f}s (PuLID)")
         print(f"  step 2:     ran {len(attempts)} times (each Qwen retry)")
-        print(f"  cost:       ${actual_cost:.3f}")
+        print(f"  cost:       ${actual_cost:.3f}  (LLM only)")
         print(f"  qc:         FAILED after {len(attempts)} attempts")
         for issue in qc.get("issues", []):
             print(f"              - {issue}")
@@ -626,7 +617,6 @@ def main() -> int:
         print(f"  error message: {record.get('error_message')}")
     print("")
 
-    # Exit code: 0 = success, 1 = qc_failed (image rejected but ran fully), 2 = hard error
     if final_status == "success":
         return 0
     elif final_status == "qc_failed":

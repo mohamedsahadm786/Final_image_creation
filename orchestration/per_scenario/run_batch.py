@@ -1,27 +1,27 @@
 """
-ollama_flow/run_batch_ollama.py — batch runner for Ollama mode (LOCAL stages).
+orchestration/per_scenario/run_batch.py — batch runner for the per-scenario flow.
 
-Mirrors orchestration/per_scenario/run_batch.py but:
-  - Calls process_scenario() from run_ollama.py (Ollama prompt builders)
-  - Routes DB writes to ollama_flow/data/alluvi_ollama.db
-  - Outputs to ollama_flow/outputs/<ts>_batch[_pilot]/<scenario_id>/
+Calls process_scenario() from run.py for each scenario in turn, with the
+per-scenario load pattern (load Stage 1 → infer → unload → load Stage 2 →
+infer + QC retries → unload → load Stage 3 → infer → unload), repeated
+per scenario. Each scenario does 3 model loads.
 
-Per-scenario load pattern: each scenario loads → infers → unloads each
-stage in turn. 3 model loads per scenario. For stage-batched optimization
-(3 loads total), see future orchestration/stage_batched/ — out of scope here.
+For the stage-batched alternative (load Stage 1 once, run for all N scenarios,
+unload; then Stage 2 once for all N; etc. — total 3 loads regardless of N),
+see orchestration/stage_batched/run_batch_stage.py (not yet built).
 
 CLI:
-    python run_batch_ollama.py                    # all scenarios
-    python run_batch_ollama.py --pilot            # first 5
-    python run_batch_ollama.py --only ID1,ID2     # specific IDs
-    python run_batch_ollama.py --exclude ID1,ID2  # all except these
-    python run_batch_ollama.py --yes              # skip cost prompt
-    python run_batch_ollama.py --skip-preflight   # not recommended
+    python orchestration/per_scenario/run_batch.py                    # all scenarios
+    python orchestration/per_scenario/run_batch.py --pilot            # first 5
+    python orchestration/per_scenario/run_batch.py --only ID1,ID2     # specific IDs
+    python orchestration/per_scenario/run_batch.py --exclude ID1,ID2  # all except these
+    python orchestration/per_scenario/run_batch.py --yes              # skip cost prompt
+    python orchestration/per_scenario/run_batch.py --skip-preflight   # not recommended
 
 Output layout:
-    ollama_flow/outputs/<ts>_batch[_pilot]/
-      ├── overview.html
-      ├── batch_manifest.json
+    outputs/<ts>_batch[_pilot]/
+      ├── overview.html              ← grid of all scenarios
+      ├── batch_manifest.json        ← machine-readable summary
       └── <scenario_id>/
             ├── 01_scenario.yaml
             ├── ...
@@ -36,31 +36,30 @@ import traceback
 from datetime import datetime
 from pathlib import Path
 
-# Path setup — same as run_ollama.py
-OLLAMA_FLOW_ROOT = Path(__file__).resolve().parent
-PARENT_REPO_ROOT = OLLAMA_FLOW_ROOT.parent
-sys.path.insert(0, str(OLLAMA_FLOW_ROOT))
-sys.path.insert(0, str(PARENT_REPO_ROOT))
+# Repo root: walk up from orchestration/per_scenario/run_batch.py
+REPO_ROOT = Path(__file__).resolve().parents[2]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
 
-# Import run_ollama first — it monkey-patches db.DB_PATH at module load.
-# All subsequent db calls (here and from process_scenario) use the
-# alluvi_ollama.db path.
-from run_ollama import process_scenario, _load_config, PLAN_LABEL, OUTPUT_ROOT
-from src import db as _db
-from src import scenario_loader, trace_html
+# Same-folder import: process_scenario lives in run.py next to this file
+HERE = Path(__file__).resolve().parent
+if str(HERE) not in sys.path:
+    sys.path.insert(0, str(HERE))
 
-# overview_html generator (parent's). May not match exact signature — handled
-# below with multi-attempt fallback.
-try:
-    from src import overview_html
-except ImportError:
-    overview_html = None
+from run import process_scenario, _load_config, PLAN_LABEL, OUTPUT_ROOT
+from src import db, scenario_loader, trace_html, overview_html
 
 
-# Estimated wall time per scenario on Blackwell (load + infer + unload, 3 stages)
+# Estimated wall time per scenario on Blackwell (load + infer + unload, 3 stages).
+# Used for cost confirmation only — actual time varies with scenario complexity,
+# QC retries, and whether the HF cache is warm.
 DEFAULT_WALL_TIME_PER_SCENARIO_S = 300  # 5 min average
 
+# Default pilot size
 PILOT_COUNT = 5
+
+# Pod hourly rate for GPU cost estimate. Override via env var or just edit here
+# if you switch pod tiers.
 POD_HOURLY_USD = 1.89
 
 
@@ -69,13 +68,13 @@ POD_HOURLY_USD = 1.89
 # ──────────────────────────────────────────────────────────────────────────
 
 def _filter_scenarios(all_scenarios, only=None, exclude=None, pilot=False):
-    """Apply --only / --exclude / --pilot in that order."""
+    """Apply --only / --exclude / --pilot in that order. Returns filtered list."""
     if only:
         only_set = {x.strip() for x in only.split(",") if x.strip()}
         filtered = [s for s in all_scenarios if s.get("id") in only_set]
         missing = only_set - {s.get("id") for s in filtered}
         if missing:
-            print(f"[batch_ollama] WARNING: --only IDs not found: {sorted(missing)}")
+            print(f"[batch] WARNING: --only IDs not found in scenarios.yaml: {sorted(missing)}")
     else:
         filtered = list(all_scenarios)
 
@@ -93,27 +92,29 @@ def _filter_scenarios(all_scenarios, only=None, exclude=None, pilot=False):
 # Cost confirmation
 # ──────────────────────────────────────────────────────────────────────────
 
-def _confirm_cost(n_scenarios, skip=False) -> bool:
+def _confirm_cost(n_scenarios, cost_per_scenario, skip=False) -> bool:
     """
-    Ollama is free, so no LLM cost. Only GPU time is real.
+    Show LLM + GPU cost estimate and wall time. Returns True to proceed.
     """
+    llm_cost_total = n_scenarios * cost_per_scenario
     wall_seconds = n_scenarios * DEFAULT_WALL_TIME_PER_SCENARIO_S
     wall_hours = wall_seconds / 3600
     gpu_cost_total = wall_hours * POD_HOURLY_USD
 
     print("")
     print("=" * 72)
-    print(" BATCH PLAN (Ollama mode — LLM is free)")
+    print(" BATCH PLAN")
     print("=" * 72)
     print(f"  scenarios:           {n_scenarios}")
-    print(f"  LLM cost:            $0.00  (Ollama runs locally)")
+    print(f"  LLM cost (est):      ~${llm_cost_total:.2f}  (~${cost_per_scenario:.2f}/scenario)")
     print(f"  Wall time (est):     ~{wall_seconds/60:.0f} min  (~{DEFAULT_WALL_TIME_PER_SCENARIO_S}s/scenario)")
     print(f"  GPU cost (est):      ~${gpu_cost_total:.2f}  ({wall_hours:.2f}h × ${POD_HOURLY_USD}/hr)")
+    print(f"  Combined (est):      ~${llm_cost_total + gpu_cost_total:.2f}")
     print("=" * 72)
     print("")
 
     if skip:
-        print("[batch_ollama] --yes flag: skipping confirmation")
+        print("[batch] --yes flag: skipping confirmation")
         return True
 
     try:
@@ -127,20 +128,31 @@ def _confirm_cost(n_scenarios, skip=False) -> bool:
 # Summary + manifest
 # ──────────────────────────────────────────────────────────────────────────
 
-def _build_summary(records, elapsed_s) -> dict:
+def _build_summary(records, elapsed_s, config) -> dict:
+    """Compute batch-level summary stats from per-scenario records."""
     n_total = len(records)
     n_success = sum(1 for r in records if r.get("final_status") == "success")
+    n_qc_failed = sum(1 for r in records if r.get("final_status") == "qc_failed")
     n_failed = sum(1 for r in records if r.get("final_status") == "failed")
 
-    # GPU cost only (Ollama is free)
+    # Per-stage cost rollup
+    c_opus_1 = config.get("step_1", {}).get("cost_per_prompt_opus_usd", 0.10)
+    c_opus_2 = config.get("step_2", {}).get("cost_per_prompt_opus_usd", 0.18)
+
     total_cost = 0.0
     for r in records:
+        # Stage cost_usd (local = 0.0, but kept for fal-style accounting)
         for stage in ("step_1_meta", "step_2_meta", "step_3_meta"):
             meta = r.get(stage)
             if isinstance(meta, dict) and not meta.get("error"):
                 total_cost += float(meta.get("cost_usd") or 0.0)
+        # Opus prompt costs (only if the prompt was successfully built)
+        if r.get("step_1_output"):
+            total_cost += c_opus_1
+        if r.get("step_2_output"):
+            total_cost += c_opus_2
 
-    # Stage 3 tally
+    # Stage 3 outcome tally
     n_step3_ran = 0
     n_step3_failed = 0
     for r in records:
@@ -148,14 +160,14 @@ def _build_summary(records, elapsed_s) -> dict:
         if isinstance(s3, dict):
             if s3.get("error"):
                 n_step3_failed += 1
-            elif s3:
+            elif s3:  # non-empty dict and no error
                 n_step3_ran += 1
     n_step3_skipped = n_total - n_step3_ran - n_step3_failed
 
     return {
         "total": n_total,
         "successful": n_success,
-        "qc_failed": 0,  # no QC in Ollama flow
+        "qc_failed": n_qc_failed,
         "failed": n_failed,
         "total_cost_usd": round(total_cost, 3),
         "duration_seconds": int(elapsed_s),
@@ -166,6 +178,7 @@ def _build_summary(records, elapsed_s) -> dict:
 
 
 def _write_manifest(output_dir, run_id, records, summary, started_at, finished_at) -> None:
+    """Write batch_manifest.json — machine-readable summary of the whole batch."""
     manifest = {
         "run_id": run_id,
         "plan": PLAN_LABEL,
@@ -191,6 +204,9 @@ def _write_manifest(output_dir, run_id, records, summary, started_at, finished_a
                     (r.get("step_3_meta") or {}).get("error")
                     if isinstance(r.get("step_3_meta"), dict) else None
                 ),
+                "qc_passed": (r.get("qc_result") or {}).get("passed"),
+                "qc_score": (r.get("qc_result") or {}).get("score"),
+                "qc_attempts": len(r.get("qc_attempts") or []),
                 "final_image_path": r.get("final_image_path"),
             }
             for r in records
@@ -202,10 +218,12 @@ def _write_manifest(output_dir, run_id, records, summary, started_at, finished_a
 
 
 def _write_overview_html(output_dir, records, summary) -> None:
-    if overview_html is None:
-        print("[batch_ollama] overview_html module not importable — skipping overview.html")
-        return
-
+    """
+    Call overview_html with the most likely signature. If the real signature
+    differs, the error is logged but the batch still completes — overview
+    can be regenerated separately once the call is fixed.
+    """
+    # Try the most likely signature variants in order of probability.
     attempts = [
         lambda: overview_html.write_overview_html(output_dir, records, summary),
         lambda: overview_html.write_overview(output_dir, records, summary),
@@ -218,15 +236,16 @@ def _write_overview_html(output_dir, records, summary) -> None:
     for fn in attempts:
         try:
             fn()
-            return
+            return  # success
         except (AttributeError, TypeError) as e:
             last_error = e
             continue
         except Exception as e:
-            print(f"[batch_ollama] overview.html generator raised: {type(e).__name__}: {e}")
+            # A real error inside the generator — log and stop trying
+            print(f"[batch] overview.html generator raised: {type(e).__name__}: {e}")
             return
     print(
-        f"[batch_ollama] WARNING: no matching overview_html signature. "
+        f"[batch] WARNING: could not find a matching overview_html signature. "
         f"Last error: {last_error}. overview.html not generated."
     )
 
@@ -238,9 +257,9 @@ def _write_overview_html(output_dir, records, summary) -> None:
 def main() -> int:
     parser = argparse.ArgumentParser(
         description=(
-            "Run the Alluvi LOCAL image pipeline in Ollama mode (no Anthropic) "
-            "for a batch of scenarios. Per-scenario flow: each scenario goes "
-            "through all 3 stages before moving to the next."
+            "Run the Alluvi LOCAL image generation pipeline for a batch of "
+            "scenarios (per-scenario flow: each scenario goes through all 3 "
+            "stages before moving to the next)."
         )
     )
     parser.add_argument("--pilot", action="store_true",
@@ -257,59 +276,38 @@ def main() -> int:
 
     # 1. Preflight
     if not args.skip_preflight:
-        preflight_path = OLLAMA_FLOW_ROOT / "preflight_ollama.py"
-        if preflight_path.exists():
-            try:
-                # Import dynamically — preflight_ollama lives at sibling
-                import importlib.util
-                spec = importlib.util.spec_from_file_location("preflight_ollama", preflight_path)
-                pf = importlib.util.module_from_spec(spec)
-                spec.loader.exec_module(pf)
-                if hasattr(pf, "run_preflight"):
-                    errors, _warnings = pf.run_preflight(verbose=True)
-                    if errors:
-                        print("[batch_ollama] preflight failed — aborting batch")
-                        return 1
-                else:
-                    print("[batch_ollama] preflight_ollama.py has no run_preflight() — skipping")
-            except Exception as e:
-                print(f"[batch_ollama] preflight crashed: {e} — continuing (use --skip-preflight to silence)")
-        else:
-            # Fall back to parent preflight if Ollama-specific one doesn't exist
-            try:
-                from preflight import run_preflight
-                errors, _warnings = run_preflight(verbose=True)
-                if errors:
-                    print("[batch_ollama] parent preflight failed — aborting batch")
-                    return 1
-            except Exception as e:
-                print(f"[batch_ollama] no preflight available ({e}) — continuing")
+        from preflight import run_preflight
+        errors, _warnings = run_preflight(verbose=True)
+        if errors:
+            print("[batch] preflight failed — aborting batch")
+            return 1
 
     # 2. Load + filter scenarios
     try:
         all_scenarios = scenario_loader.load_scenarios()
     except Exception as e:
-        print(f"[batch_ollama] failed to load scenarios.yaml: {type(e).__name__}: {e}")
+        print(f"[batch] failed to load scenarios.yaml: {type(e).__name__}: {e}")
         return 1
 
     scenarios = _filter_scenarios(
         all_scenarios, only=args.only, exclude=args.exclude, pilot=args.pilot
     )
     if not scenarios:
-        print("[batch_ollama] no scenarios after filters — nothing to do")
+        print("[batch] no scenarios after filters — nothing to do")
         return 1
 
     # 3. Config + cost confirmation
     config = _load_config()
+    cost_per = float(config.get("cost_per_scenario_usd", 0.30))
 
-    if not _confirm_cost(len(scenarios), skip=args.yes):
-        print("[batch_ollama] aborted by user")
+    if not _confirm_cost(len(scenarios), cost_per, skip=args.yes):
+        print("[batch] aborted by user")
         return 1
 
     # 4. Output dir + DB run row
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     pilot_suffix = "_pilot" if args.pilot else ""
-    run_id = f"{timestamp}_batch{pilot_suffix}_ollama"
+    run_id = f"{timestamp}_batch{pilot_suffix}"
     output_dir = OUTPUT_ROOT / run_id
     output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -320,27 +318,26 @@ def main() -> int:
         notes_parts.append(f"only={args.only}")
     if args.exclude:
         notes_parts.append(f"exclude={args.exclude}")
-    notes = "batch (ollama, local): " + ", ".join(notes_parts)
+    notes = "batch: " + ", ".join(notes_parts)
 
     try:
-        _db.create_run(
+        db.create_run(
             run_id=run_id,
             plan=PLAN_LABEL,
             pilot_mode=args.pilot,
             notes=notes,
         )
     except Exception as e:
-        print(f"[batch_ollama] DB create_run failed: {e}")
+        print(f"[batch] DB create_run failed: {e}")
         return 1
 
     # 5. Run the batch
     print("")
     print("=" * 72)
-    print(f" ALLUVI — BATCH RUN (Ollama mode, local pipeline)")
+    print(f" ALLUVI — BATCH RUN (per-scenario flow, local pipeline)")
     print(f" Run id:    {run_id}")
     print(f" Scenarios: {len(scenarios)}")
     print(f" Output:    {output_dir}")
-    print(f" DB:        {_db.DB_PATH}")
     print("=" * 72)
 
     started_at = datetime.utcnow().isoformat()
@@ -352,7 +349,7 @@ def main() -> int:
         for i, scenario in enumerate(scenarios, start=1):
             scenario_id = scenario.get("id", "?")
             print("")
-            print(f"[batch_ollama] [{i}/{len(scenarios)}] === {scenario_id} ===")
+            print(f"[batch] [{i}/{len(scenarios)}] === {scenario_id} ===")
             scenario_output_dir = output_dir / scenario_id
 
             try:
@@ -362,8 +359,9 @@ def main() -> int:
             except KeyboardInterrupt:
                 raise
             except Exception as e:
+                # process_scenario should never raise — this is paranoia
                 print(
-                    f"[batch_ollama] {scenario_id}: UNEXPECTED uncaught exception: "
+                    f"[batch] {scenario_id}: UNEXPECTED uncaught exception: "
                     f"{type(e).__name__}: {e}"
                 )
                 traceback.print_exc()
@@ -375,70 +373,70 @@ def main() -> int:
                     "error_message": f"{type(e).__name__}: {e}",
                 }
 
-            # process_scenario writes chain.html with persona path
-            # "../../../assets/persona.jpg" — correct for single-scenario
-            # layout (ollama_flow/outputs/<ts>_<sid>/chain.html). For batch
-            # layout (ollama_flow/outputs/<ts>_batch/<sid>/chain.html) the
-            # chain.html lives one level deeper, so we re-write with
-            # "../../../../assets/persona.jpg".
+            # process_scenario writes chain.html with persona path "../../assets/persona.jpg"
+            # which is correct for single-scenario layout (outputs/<ts>_<sid>/chain.html
+            # → repo root). For batch layout (outputs/<ts>_batch/<sid>/chain.html), the
+            # chain.html lives one level deeper, so we re-write with "../../../...".
             try:
                 trace_html.write_chain_html(
                     scenario_output_dir, record,
-                    persona_rel_path="../../../../assets/persona.jpg",
+                    persona_rel_path="../../../assets/persona.jpg",
                 )
             except Exception as e:
-                print(f"[batch_ollama] {scenario_id}: chain.html re-write failed (non-fatal): {e}")
+                print(f"[batch] {scenario_id}: chain.html re-write failed (non-fatal): {e}")
 
             records.append(record)
 
+            # Brief per-scenario status line
             status = record.get("final_status", "?")
             s1 = (record.get("step_1_meta") or {}).get("elapsed_seconds", 0) or 0
             s2 = (record.get("step_2_meta") or {}).get("elapsed_seconds", 0) or 0
             s3_meta = record.get("step_3_meta")
             s3 = (s3_meta or {}).get("elapsed_seconds", 0) if isinstance(s3_meta, dict) else 0
             print(
-                f"[batch_ollama] [{i}/{len(scenarios)}] {scenario_id}: {status.upper()} "
+                f"[batch] [{i}/{len(scenarios)}] {scenario_id}: {status.upper()} "
                 f"(s1={s1:.0f}s s2={s2:.0f}s s3={s3:.0f}s)"
             )
 
     except KeyboardInterrupt:
         interrupted = True
-        print("\n[batch_ollama] interrupted by user — finalizing partial batch...")
+        print("\n[batch] interrupted by user — finalizing partial batch...")
 
     elapsed = time.time() - started
     finished_at = datetime.utcnow().isoformat()
-    summary = _build_summary(records, elapsed)
+    summary = _build_summary(records, elapsed, config)
 
     # 6. Finalize DB
     try:
-        _db.finalize_run(
+        db.finalize_run(
             run_id=run_id,
             total_scenarios=summary["total"],
             successful=summary["successful"],
-            failed=summary["failed"],
+            failed=summary["failed"] + summary["qc_failed"],
             total_cost_usd=summary["total_cost_usd"],
             duration_seconds=summary["duration_seconds"],
         )
     except Exception as e:
-        print(f"[batch_ollama] DB finalize_run failed (non-fatal): {e}")
+        print(f"[batch] DB finalize_run failed (non-fatal): {e}")
 
     # 7. Write manifest + overview
     try:
         _write_manifest(output_dir, run_id, records, summary, started_at, finished_at)
     except Exception as e:
-        print(f"[batch_ollama] batch_manifest.json write failed (non-fatal): {e}")
+        print(f"[batch] batch_manifest.json write failed (non-fatal): {e}")
 
     _write_overview_html(output_dir, records, summary)
 
-    # 8. Final summary
+    # 8. Final summary print
     print("")
     print("=" * 72)
     print(" BATCH COMPLETE" + (" (interrupted)" if interrupted else ""))
     print("=" * 72)
     print(f"  total:        {summary['total']}")
     print(f"  ✓ success:    {summary['successful']}")
+    print(f"  ⚠ qc failed:  {summary['qc_failed']}")
     print(f"  ✗ failed:     {summary['failed']}")
-    print(f"  cost:         $0.00  (LLM free via Ollama)")
+    print(f"  cost:         ${summary['total_cost_usd']:.2f}  (LLM only — GPU separate)")
     print(f"  wall time:    {summary['duration_seconds']/60:.1f} min")
     gpu_cost = (summary['duration_seconds'] / 3600) * POD_HOURLY_USD
     print(f"  gpu cost:     ~${gpu_cost:.2f}  ({summary['duration_seconds']/3600:.2f}h × ${POD_HOURLY_USD}/hr)")
@@ -454,9 +452,11 @@ def main() -> int:
     print("")
 
     if interrupted:
-        return 130
+        return 130  # standard SIGINT exit code
     if summary["failed"] > 0:
         return 2
+    if summary["qc_failed"] > 0:
+        return 1
     return 0
 
 
