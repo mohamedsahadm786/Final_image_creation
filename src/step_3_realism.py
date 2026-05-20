@@ -14,6 +14,14 @@ WHY KONTEXT (not img2img):
   identity, and unchanged regions. img2img at any strength drifts product
   text ("ALLUVI" → "ALUUVI"). Kontext fixes that by design.
 
+ASPECT RATIO PRESERVATION:
+  Diffusers FluxKontextPipeline defaults to 1024×1024 and silently crops
+  the input if width/height aren't passed explicitly (diffusers issue
+  #11886). We read the input image's dimensions and pass them through —
+  output matches input aspect ratio verbatim. For 9:16 TikTok-format
+  scenarios (768×1344) both dims are already multiples of 16, so no
+  rounding occurs.
+
 Public surface:
   load_pipeline()           — heavy load (~24 GB VRAM). Call once per stage.
   generate(pipeline, ...)   — runs inference with a preloaded pipeline.
@@ -135,6 +143,11 @@ def generate(
         instruction += f" The lighting should remain: {extra_lighting_hint.strip()}"
 
     input_image = Image.open(step_2_local_path).convert("RGB")
+    # ─── ASPECT-RATIO FIX ───────────────────────────────────────────────
+    # Diffusers FluxKontextPipeline defaults to 1024×1024 and crops the
+    # input if width/height not passed. Read the input's dims and pass them
+    # through so Stage 3 output matches Stage 2 aspect ratio exactly.
+    input_w, input_h = input_image.size
 
     generator = None
     if seed is not None:
@@ -144,6 +157,8 @@ def generate(
     resolved_args = {
         "prompt": instruction,
         "image_input": str(Path(step_2_local_path).resolve()),
+        "width": input_w,
+        "height": input_h,
         "num_inference_steps": num_inference_steps,
         "guidance_scale": guidance_scale,
         "seed": seed,
@@ -162,13 +177,16 @@ def generate(
 
     print(
         f"[step_3_realism] [{scenario_id}] inferring "
-        f"(steps={num_inference_steps}, guidance={guidance_scale}, seed={seed})"
+        f"(size={input_w}x{input_h}, steps={num_inference_steps}, "
+        f"guidance={guidance_scale}, seed={seed})"
     )
 
     t0 = time.time()
     result = pipeline(
         image=input_image,
         prompt=instruction,
+        width=input_w,
+        height=input_h,
         num_inference_steps=num_inference_steps,
         guidance_scale=guidance_scale,
         generator=generator,

@@ -1,0 +1,60 @@
+product_id: tirzepatide_40mg
+brand: Alluvi
+product_name: Tirzepatide — Dual Agonist of GLP-1, GIP Receptors
+peptide_compound: Tirzepatide
+dose: 40mg
+
+# Visual description for prompt-writing
+packaging:
+  type: cardboard_box
+  shape: horizontal rectangular box with front cutout window revealing the pre-filled injection pen inside
+  primary_colors:
+    - "#FFFFFF bright white"
+    - "#2B7BD6 vibrant medical blue"
+    - "#1B4F8C deeper navy blue"
+    - "#2C2C2C charcoal black text"
+    - "#E63946 red accent (on vial label)"
+    - "#3D8F3F green (certification badge)"
+  text_on_packaging:
+    - "TIRZEPATIDE"
+    - "DUAL AGONIST OF GLP-1, GIP RECEPTORS"
+    - "ALLUVI"
+    - "HEALTHCARE"
+    - "40mg"
+    - "4 Doses of 10 mg"
+    - "Store in a refrigerator (2°C to 8°C)"
+    - "For subcutaneous injection only"
+    - "Read package leaflet before use"
+    - "GOOD MANUFACTURING PRACTICE CERTIFIED"
+    - "ALLUVI CERTIFIED (on green seal badge)"
+    - "vial/pen label reads ALLUVI TIRZEPATIDE"
+    - "For Subcutaneous Injection Only (on pen label)"
+    - "AA monogram on pen label"
+  graphic_elements: flowing blue wave-mesh gradient swirling diagonally across the lower front face, faint hexagonal molecular-structure line pattern in the lower-left background, circular green "Good Manufacturing Practice Certified" seal in the center, blue rounded rectangle dose callout on the right, small ALLUVI HEALTHCARE side panel visible on the left edge
+  approximate_dimensions: long flat rectangular box, roughly 7 inches wide by 3 inches tall by 1.5 inches deep
+
+# Category and benefit framing
+category: weight_management
+key_benefits:
+  - supports weight management goals
+  - aids appetite regulation
+  - supports metabolic balance
+  - complements a structured nutrition and lifestyle routine
+
+# Target audience profiling
+target_audience:
+  primary_demographic: women 28-45 actively managing weight and body composition
+  secondary_demographic: health-conscious men 30-50 focused on metabolic health and physique goals
+  use_context: structured weight-management protocols, wellness-focused lifestyles, health-optimization routines, GLP-1 educated consumers
+
+# Reference photo path
+reference_photo: assets/product.jpg
+
+# Compliance flags — what NOT to claim
+do_not_claim:
+  - "specific weight loss percentages or pound figures"
+  - "guaranteed results"
+  - "medical treatment for any condition"
+  - "comparisons to prescription drugs like Mounjaro or Ozempic"
+  - "diabetes treatment claims"
+  - "appetite suppression as a medical effect"

@@ -13,6 +13,28 @@ Return-dict contract matches the old fal version (with fal_url=None,
 request_id=local UUID, cost_usd=0.0) so DB writes and HTML viewers
 need no changes.
 
+CFG requires BOTH true_cfg_scale > 1 AND negative_prompt:
+  Per diffusers docs ("Classifier-free guidance is enabled by setting
+  true_cfg_scale > 1 and a provided negative_prompt"), passing
+  true_cfg_scale=4.0 without negative_prompt silently disables CFG.
+  Every official Qwen-Image-Edit-2511 example passes negative_prompt=" "
+  (single space). We do the same here, with a defensive fallback if the
+  envelope omits it.
+
+  Also: the `guidance_scale` kwarg is INEFFECTIVE on Qwen-Image-Edit-2511
+  ("guidance_scale parameter is there to support future guidance-distilled
+  models... Note that passing guidance_scale to the pipeline is ineffective").
+  We don't pass it.
+
+MAX_SEQUENCE_LENGTH FIX (CRITICAL for prompt fidelity):
+  The pipeline's default max_sequence_length is 512 tokens (~200 words),
+  with a hard ceiling of 1024. Prompts longer than 512 tokens are SILENTLY
+  TRUNCATED — instructions at the end of the prompt are simply ignored by
+  the model. For the Alluvi pipeline this matters: the Opus-generated Step 2
+  prompts run 500-900 tokens, and the product preservation clauses are
+  typically near the end (which gets cut off). Bumping to 1024 unlocks the
+  full prompt and is the single biggest quality lever for product fidelity.
+
 PER-CALL AUDIT:
   Before inference, writes `{out_path.stem}_request.json` next to out_path
   capturing the exact prompt + resolved params + image input paths.
@@ -40,9 +62,21 @@ DEFAULT_QWEN_PATH = os.environ.get(
 ENDPOINT_LABEL = "local/qwen-image-edit-2511"
 COST_PER_IMAGE_USD = 0.0  # GPU time tracked separately at batch level
 
-# Sensible defaults if scenario envelope doesn't specify
-DEFAULT_NUM_STEPS = 50
-DEFAULT_TRUE_CFG_SCALE = 4.0
+# Sensible defaults if scenario envelope doesn't specify.
+# IMPORTANT: these match the official Qwen-Image-Edit-2511 README values.
+DEFAULT_NUM_STEPS = 40           # official Qwen team recommendation
+DEFAULT_TRUE_CFG_SCALE = 3.0     # official Qwen team recommendation
+
+# CFG balance requirement — without this, true_cfg_scale silently does nothing.
+# Single space is intentional (matches official Qwen examples). DO NOT change
+# to empty string — empty string is treated as "no negative prompt" in
+# diffusers and skips the negative branch entirely.
+DEFAULT_NEGATIVE_PROMPT = " "
+
+# Maximum allowed by the model is 1024 — bumping from the silently-truncating
+# default 512 to capture the full Opus-generated prompt including product
+# preservation clauses at the tail.
+DEFAULT_MAX_SEQUENCE_LENGTH = 1024
 
 
 def load_pipeline(model_path: str = DEFAULT_QWEN_PATH) -> QwenImageEditPlusPipeline:
@@ -103,9 +137,8 @@ def generate(
         step_1_local_path: path to the Step 1 PuLID output image
         step_2_prompt: Opus-generated Step 2 prompt text
         fal_qwen_params: dict from prompt envelope (image_size, num_inference_steps,
-                         guidance_scale, seed, etc.). Param dict keeps the
-                         fal_qwen_params name for compatibility with the existing
-                         prompt builder output shape.
+                         seed, etc.). Param dict keeps the fal_qwen_params name for
+                         compatibility with the existing prompt builder output shape.
         out_path: where to write the resulting JPG
         scenario_id: for logging
 
@@ -129,6 +162,21 @@ def generate(
         fal_qwen_params.get("true_cfg_scale",
                             fal_qwen_params.get("guidance_scale", DEFAULT_TRUE_CFG_SCALE))
     )
+    negative_prompt = fal_qwen_params.get("negative_prompt")
+    if not negative_prompt:
+        negative_prompt = DEFAULT_NEGATIVE_PROMPT
+
+    # ─── max_sequence_length unlock ─────────────────────────────────────
+    # Default 512 silently truncates prompts >~200 words. Bumping to 1024
+    # (the hard model ceiling) captures full Opus-generated prompts so the
+    # product preservation clauses near the end of the prompt actually reach
+    # the model. Single biggest quality lever for this pipeline.
+    max_sequence_length = int(fal_qwen_params.get("max_sequence_length",
+                                                    DEFAULT_MAX_SEQUENCE_LENGTH))
+    # Clamp to model's hard ceiling
+    if max_sequence_length > 1024:
+        max_sequence_length = 1024
+
     seed = fal_qwen_params.get("seed")
 
     # image_size translation (fal dict/preset → diffusers width/height)
@@ -149,6 +197,8 @@ def generate(
                        str(PRODUCT_IMAGE_PATH.resolve())],
         "num_inference_steps": num_inference_steps,
         "true_cfg_scale": true_cfg_scale,
+        "negative_prompt": negative_prompt,
+        "max_sequence_length": max_sequence_length,
         "width": width,
         "height": height,
         "seed": seed,
@@ -167,6 +217,7 @@ def generate(
     print(
         f"[step_2_qwen] [{scenario_id}] inferring "
         f"(steps={num_inference_steps}, true_cfg={true_cfg_scale}, "
+        f"neg_prompt={negative_prompt!r}, max_seq={max_sequence_length}, "
         f"size={width}x{height}, seed={seed})"
     )
 
@@ -174,8 +225,10 @@ def generate(
     result = pipeline(
         image=[persona_image, product_image],
         prompt=step_2_prompt,
+        negative_prompt=negative_prompt,
         num_inference_steps=num_inference_steps,
         true_cfg_scale=true_cfg_scale,
+        max_sequence_length=max_sequence_length,
         height=height,
         width=width,
         generator=generator,

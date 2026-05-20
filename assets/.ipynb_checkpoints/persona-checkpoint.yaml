@@ -1,0 +1,207 @@
+persona_id: persona_001
+niche: clean_girl
+version: 2
+last_updated: 2026-05-08
+
+# ════════════════════════════════════════════════════════════════════════════
+# WHAT THIS FILE CONTAINS — and what it explicitly does NOT
+#
+# THIS FILE = PERMANENT IDENTITY ONLY.
+#   The face. The body. The hair. The eyes. The ethnicity. The vibe.
+#   Things that DO NOT change between a gym scene and a kitchen scene.
+#
+# THIS FILE DOES NOT CONTAIN:
+#   - Clothing / outfit / wardrobe          → lives in scenarios.yaml
+#   - Jewelry, accessories, watches         → lives in scenarios.yaml
+#   - Makeup look (e.g. "no-makeup makeup", "smoky eye")  → lives in scenarios.yaml
+#   - Nail polish color or style            → lives in scenarios.yaml
+#   - Hair styling for a specific shot      → scenarios.yaml ("messy bun", "down")
+#   - Pose / hand position / grip           → lives in scenarios.yaml
+#   - Lighting / mood / camera angle        → lives in scenarios.yaml
+#
+# Why this matters:
+#   In Phase 1 we baked outfit into persona.yaml. The result was every
+#   generated image had the same white sports bra. The model was reading
+#   the outfit description from persona.yaml AND from the persona.jpg
+#   image and locking it. Stripping outfit here lets the scenario YAML
+#   own wardrobe variation per shot.
+# ════════════════════════════════════════════════════════════════════════════
+
+
+# ─────────────────────────────────────────────────────────────────────────
+# IDENTITY — ethnicity, age, body, skin
+# These are anchors the prompt builder uses for face-lock language.
+# ─────────────────────────────────────────────────────────────────────────
+identity:
+  age_band: 23-27
+  estimated_age: 25
+  apparent_age_minimum: 21          # compliance hard floor — never under 21
+  gender_presentation: feminine
+  ethnicity_descriptor: Mediterranean / Southern European, possibly Latina
+  skin_tone: deep_tan
+  skin_undertone: warm
+  skin_quality:
+    - real skin texture with visible pores
+    - sun-kissed warmth, healthy glow
+    - subtle natural imperfections, never airbrushed
+  body_type: toned_athletic
+  body_proportions:
+    - athletic, naturally toned without being overbuilt
+    - flat stomach, defined waist, balanced hip-to-waist ratio
+    - lean arms with subtle definition
+    - long legs proportional to torso
+    - DO NOT exaggerate body proportions — she should read as a real woman, not a fitness magazine cover
+  height_impression: average      # 5'5"–5'7" range
+
+
+# ─────────────────────────────────────────────────────────────────────────
+# HAIR — permanent color and length only
+# Specific styling (down, ponytail, messy bun, slicked back) lives in scenarios.yaml
+# ─────────────────────────────────────────────────────────────────────────
+hair:
+  color: medium brunette base with heavy sun-lightened blonde balayage through mid-lengths and ends
+  color_short: brunette with blonde balayage
+  length: mid_back
+  texture: soft natural waves with body, never overly curled or stick-straight
+  natural_state: worn down with a center part, loose beachy waves and face-framing pieces
+  styling_notes:
+    - per-scenario styling overrides this — scenarios.yaml may specify "messy bun", "low ponytail", "slicked-back wet look" etc.
+    - color and texture are permanent; length is permanent at mid-back
+    - never platinum blonde, never black, never short bob
+
+
+# ─────────────────────────────────────────────────────────────────────────
+# EYES — permanent
+# ─────────────────────────────────────────────────────────────────────────
+eyes:
+  color: green
+  shape_descriptor: almond, slightly downturned outer corners
+  brow_descriptor: naturally full medium-brown brows, well-groomed but not over-shaped
+
+
+# ─────────────────────────────────────────────────────────────────────────
+# FACE — permanent structural features
+# These are the anchors that face-lock instructions reference in prompts.
+# ─────────────────────────────────────────────────────────────────────────
+face:
+  shape: soft oval
+  features:
+    - high natural cheekbones with a soft, healthy flush
+    - straight medium-bridge nose with a gently rounded tip
+    - full but not overdrawn lips with a defined cupid's bow
+    - relaxed closed-mouth smile is her natural expression
+    - jaw is gently defined, not sharp
+
+
+# ─────────────────────────────────────────────────────────────────────────
+# DESCRIPTORS for prompt builders — pre-written for consistency
+# These are the EXACT phrases prompt_builder.py should use when referring
+# to the persona. Don't paraphrase — copy verbatim into Step 1 prompts.
+# ─────────────────────────────────────────────────────────────────────────
+prompt_descriptors:
+
+  # Use this when the scenario calls for a tight 1-line identity lock
+  # (e.g. mid-paragraph in a busy prompt where word budget is tight)
+  face_descriptor_short: >-
+    A 25-year-old Mediterranean woman with sun-kissed deep-tan skin, green almond
+    eyes, and brunette-with-blonde-balayage waves to her mid-back.
+
+  # Use this when the scenario allows a fuller intro line at the top of the prompt
+  face_descriptor_full: >-
+    A 25-year-old Mediterranean / Southern European woman with deep tan skin and
+    a warm undertone, soft oval face with high natural cheekbones, green almond
+    eyes with slightly downturned outer corners, full medium-brown brows, and a
+    soft closed-mouth smile. Her hair is medium brunette with heavy sun-lightened
+    blonde balayage through the mid-lengths and ends, mid-back length, soft
+    natural waves with body. She has real skin texture with visible pores, a
+    healthy glow, and naturally toned athletic proportions — not overbuilt.
+
+  # Identity-lock instruction lines — paste these VERBATIM into Step 1 prompts
+  # (one of these every prompt, choose based on intensity needed)
+  identity_lock_minimal: "Reference image is the persona — preserve her face and identity exactly."
+  identity_lock_strong: "Reference image is the persona — preserve her face, eye color, eye shape, brow shape, nose shape, lip shape, jaw line, and hair color exactly. Do not improvise her face."
+  identity_lock_close_up: "Reference image is the persona — face must match the reference precisely with no improvisation. Preserve every facial feature, eye color, hair color, and skin tone exactly. The face is the most important element of this image."
+
+
+# ─────────────────────────────────────────────────────────────────────────
+# WHAT TO AVOID — anti-features
+# Things that sometimes drift in generated outputs and break consistency.
+# ─────────────────────────────────────────────────────────────────────────
+anti_features:
+  hair:
+    - platinum blonde or icy blonde
+    - jet black
+    - bright red or copper
+    - any short cut (bob, lob, pixie)
+    - tight curls (her texture is soft waves, not curls)
+    - overly straight or flat-ironed
+  face:
+    - overdrawn lips
+    - heavily contoured cheekbones (she reads natural)
+    - smoky or heavy eye makeup unless scenario specifically requests it
+    - blue or brown eyes — she is green-eyed
+    - any age impression below 21 or above 30
+  body:
+    - overly thin or emaciated framing — compliance violation
+    - bodybuilder-style heavily muscled — she is toned, not built
+    - exaggerated chest or waist proportions — keep proportions natural
+  skin:
+    - airbrushed plastic finish
+    - unnaturally pale or bleached
+    - heavy spray-tan orange tone
+    - filter-stylized smoothing
+
+
+# ─────────────────────────────────────────────────────────────────────────
+# VIBE — drives which scenario types match this persona
+# Used by scenario filtering / curation to ensure brand fit.
+# ─────────────────────────────────────────────────────────────────────────
+vibe_tags:
+  - clean_girl
+  - sun_kissed
+  - effortless_minimalist
+  - wellness_focused
+  - athleisure_lifestyle
+  - pilates_princess
+  - that_girl_aesthetic
+
+# Aesthetic codes she belongs to — useful when writing scene atmosphere
+aesthetic_codes:
+  - clean girl, no-makeup makeup
+  - athleisure (Alo / Lululemon visual register, but no logos visible)
+  - pilates princess
+  - that girl morning routine
+  - wellness biohacker (in routines, supplements, recovery)
+
+# Aesthetic codes she does NOT belong to — auto-reject scenarios in these registers
+incompatible_aesthetic_codes:
+  - club / nightlife / going-out
+  - dressy / gala / formalwear
+  - festival / boho / coachella
+  - cottagecore / countryside maximalist
+  - dark academia / goth
+  - bikini / swimwear-as-focus (compliance — not the body-reveal register)
+
+
+# ─────────────────────────────────────────────────────────────────────────
+# DEMOGRAPHIC MATCH — for trend pool filtering (Phase 2 prompt dataset only)
+# Not used by Plan A/B image generation — only relevant when scraping TikTok.
+# ─────────────────────────────────────────────────────────────────────────
+demographic_match_tags:
+  - young_adult_female
+  - wellness
+  - fitness
+  - lifestyle
+  - beauty
+
+
+# ─────────────────────────────────────────────────────────────────────────
+# IMAGE GENERATION CONTROL
+# ─────────────────────────────────────────────────────────────────────────
+generation_control:
+  reference_photo: assets/persona.jpg
+  reference_photo_face_only: assets/persona_face_only.jpg   # Plan B — cropped face for FLUX Kontext
+  locked_seed: 47832
+  pulid_id_weight_default: 1.0          # Plan A: id_weight in fal-ai/flux-pulid (1.0–1.5 range)
+  pulid_id_weight_close_up: 1.2         # bump for face-prominent shots
+  kontext_guidance_default: 3.5         # Plan B

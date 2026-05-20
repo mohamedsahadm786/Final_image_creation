@@ -1,25 +1,32 @@
 """
 src/step_2_prompt_builder.py — Qwen-tuned Step 2 prompt generation via Opus 4.7.
 
-Production-tuned prompt builder. Carries all the v5 iteration rules:
-  - BREVITY directive (320-410 words, hard ceiling 430). Past Qwen runs with
-    500+ word prompts performed WORSE than 380-word versions.
-  - Rigid-rotation orientation clause (REPLACES older anti-mirror language) —
-    rotation is allowed, but the printed design rotates as one coherent surface;
-    no reflow, no redesign, no mirroring, no text reversal.
-  - Two-leg anatomy clause with occlusion handling (occluded fingers and hands
-    still fully exist; do not omit them because they are hidden).
-  - Single-product clause (exactly ONE physical Alluvi product visible; mirror
-    reflections count as the same product).
-  - Positional reference syntax ("the person from the first image" /
-    "the product from the second image") REQUIRED in this variant.
-  - "Keep X unchanged" anchors threaded through Sentence 1.
-  - White base preservation in Sentence 4.
+v6 — Research-tuned tagged-section structure (180-240 words, hard ceiling 280).
 
-This is the production prompt_builder_qwen.py adapted for the new repo:
-  - Function renamed build_step_2_prompt_qwen -> build_step_2_prompt
-  - Static context paths anchored to REPO_ROOT (not CWD-relative)
-  - Master prompt path points to prompts/master_prompt_step2_qwen.md
+Key changes from v5 (in this version):
+  - 6-section tagged structure: EDIT / PRODUCT / PRESERVE / ANATOMY / UNIQUENESS / LIGHTING
+  - PRODUCT section quotes the exact product text strings verbatim (research:
+    apiyi.com 23-test study showed quoting text raises Qwen rendering accuracy
+    from 65% to 96%)
+  - PRESERVE section is categorical only — no persona/outfit/scene re-description
+    (the model already sees the first image; re-description dilutes attention
+    AND creates contradictions when Stage 1 differs from scenario intent)
+  - NEW ANATOMY clause — natural human anatomy without counting fingers.
+    The old "five fingers per hand (one thumb plus four others) — fingers
+    occluded still fully exist" caused Qwen to render visible extras around
+    the product. The new clause explicitly forbids this.
+  - Reduced word budget from 380-450 to 180-240 (target), hard ceiling 280.
+    Research (apiyi, FAL, Replicate) consistently shows shorter prompts win
+    for image-edit tasks; the 380-450 target was a hypothesis that didn't hold up.
+
+Backward compatibility (intentionally preserved):
+  - Function signature: build_step_2_prompt(scenario, step_1_output) -> dict
+  - Returned dict's `step_2_image_prompt` key (used by step_2_qwen_edit.generate)
+  - Returned dict's `fal_qwen_params.image_size` (consumed by step_2_qwen_edit)
+  - Module path / import path unchanged
+  - Static context loader unchanged
+  - Anthropic client init unchanged
+  - JSON parse defensive guard unchanged
 """
 
 import os
@@ -80,16 +87,8 @@ def _load_static_context() -> dict[str, str]:
 
 def _parse_json(text: str) -> dict:
     """
-    Defensive JSON parse for Opus output.
-
-    Uses the shared validator in src/json_utils.py which handles:
-      - markdown code fences
-      - leading/trailing prose
-      - trailing commas
-
-    Required-key check ensures `step_2_image_prompt` is present and non-empty;
-    Opus almost always produces this correctly, but a sanity guard keeps
-    failures clean if it ever drifts.
+    Defensive JSON parse for Opus output. Uses shared validator in src/json_utils.py.
+    Required-key check: step_2_image_prompt must be present.
     """
     from src.json_utils import validate_json_output
 
@@ -103,18 +102,18 @@ def build_step_2_prompt(scenario: dict, step_1_output: dict) -> dict:
     """
     Build the Qwen-tuned Step 2 prompt envelope.
 
-    Receives both the original scenario AND the Step 1 output (which has the
-    step_2_brief data and the lighting language to echo). Calls Opus 4.7
-    with the Qwen-tuned master prompt and returns the parsed JSON envelope.
+    v6: produces a 6-section tagged prompt (EDIT / PRODUCT / PRESERVE / ANATOMY /
+    UNIQUENESS / LIGHTING) at 180-240 words. Quotes product text verbatim per
+    apiyi.com 23-test Qwen study (65%→96% text rendering accuracy improvement).
 
     Args:
         scenario: parsed scenarios.yaml entry for this scenario
         step_1_output: parsed Step 1 prompt envelope from this run
 
     Returns:
-        dict with keys: step_2_image_prompt (str), word_count (int),
-        structure_breakdown, fal_qwen_params, image_inputs_required,
-        compliance_check.
+        dict with keys: step_2_image_prompt, word_count, structure_breakdown
+        (6-section breakdown), fal_qwen_params, image_inputs_required, compliance_check.
+        Schema is backward-compatible with step_2_qwen_edit.generate() consumer.
     """
     if not QWEN_SYSTEM_PROMPT_PATH.exists():
         raise FileNotFoundError(f"missing system prompt: {QWEN_SYSTEM_PROMPT_PATH}")
@@ -124,7 +123,7 @@ def build_step_2_prompt(scenario: dict, step_1_output: dict) -> dict:
 
     user_message = "\n".join(
         [
-            "=== product.yaml (INTERNAL VALIDATION ONLY — never describe in prompt) ===",
+            "=== product.yaml (QUOTE TEXT VERBATIM IN PRODUCT SECTION) ===",
             ctx["product_yaml"],
             "",
             "=== do_dont.md (compliance) ===",
@@ -133,53 +132,97 @@ def build_step_2_prompt(scenario: dict, step_1_output: dict) -> dict:
             "=== ORIGINAL SCENARIO ===",
             json.dumps(scenario, indent=2),
             "",
-            "=== STEP 1 OUTPUT (use product_slot for placement, lighting from sentence 4) ===",
+            "=== STEP 1 OUTPUT (use lighting language from sentence 4 in your LIGHTING section) ===",
             json.dumps(step_1_output, indent=2),
             "",
             "=== TASK ===",
-            "Build the Qwen-tuned Step 2 prompt envelope.",
+            "Build the Qwen-tuned Step 2 prompt envelope using the v6 tagged-section",
+            "structure (EDIT / PRODUCT / PRESERVE FROM FIRST IMAGE / ANATOMY / UNIQUENESS",
+            "/ LIGHTING). Match the calibration examples in the system prompt closely.",
             "",
-            "BREVITY IS REQUIRED. Past Qwen runs with 500+ word prompts performed WORSE",
-            "  than 380-450 word versions of the same prompt. Stay between 380 and 450 words.",
-            "  HARD CEILING is 480 words. Do NOT exceed it. If a clause is redundant with",
-            "  another, drop it. If two clauses say the same thing, keep the shorter one.",
-            "  Match the calibration examples' length (~449 words each). They were tuned",
-            "  for Qwen's signal-to-noise characteristics — match them, don't exceed.",
-        
+            "Word budget: 180-240 words target, HARD CEILING 280. Do NOT exceed.",
+            "  This is much shorter than v5's 380-450. Research (apiyi 23-test Qwen",
+            "  study, FAL's developer guide, Replicate guidance) consistently shows",
+            "  Qwen-Image-Edit responds best to brief, structured prompts. The 449-word",
+            "  v5 prompts were producing extra-finger artifacts, garbled product text,",
+            "  and persona drift from attention dilution.",
             "",
-            "Use 'the person from the first image' / 'the product from the second image' /",
-            "  'the first image' / 'the second image' positional reference syntax",
-            "  (REQUIRED in this Qwen variant — do NOT use generic 'reference photo' language).",
-            "Thread 'keep X unchanged' anchors through Sentence 1 (keep her face unchanged,",
-            "  keep her hair unchanged, keep her outfit unchanged, keep the scene unchanged).",
-            "Echo Step 1's lighting language from sentence 4 verbatim in Sentence 4.",
-            "Sentence 2 MUST include the rigid-rotation orientation clause:",
-            "  'The packaging is a rigid object — its proportions and printed design match",
-            "   the second image exactly. The box can be rotated naturally for the holding",
-            "   pose, but the printed design rotates with it as one coherent surface; never",
-            "   reflow, redesign, or rearrange the layout to fit a different orientation;",
-            "   never mirror or reverse the text.'",
-            "  This REPLACES the older 'natural landscape orientation, do not rotate to",
-            "  vertical' language. Rotation IS allowed; redesign/reflow IS NOT.",
-            "Sentence 2 MUST include positive + negative position re-anchoring",
-            "  (e.g. 'at chest level, not above her head, not at her hip').",
-            "Sentence 3 MUST include the anatomy sanity clause with occlusion handling",
-            "  (exactly two arms, two hands, TWO LEGS, five fingers per hand;",
-            "   fingers and hands occluded by the product or her body still fully exist —",
-            "   do not omit them because they are hidden; no extra limbs, no extra digits,",
-            "   no fused or warped fingers).",
-            "Sentence 4 MUST include the single product clause at its start",
-            "  ('exactly ONE physical Alluvi product is visible — never two copies, never",
-            "   duplicates'; for mirror-reflection scenarios add 'the mirror reflection",
-            "   counts as the same product').",
-            "Include the white base preservation clause in Sentence 4.",
+            "ALL SIX SECTIONS ARE REQUIRED in this order:",
             "",
-            "Word count for step_2_image_prompt: 380-450 (HARD CEILING 480).",
+            "1. EDIT — the single change to make. 25-55 words.",
+            "   - Use 'the person from the first image' and 'the product from the second image'.",
+            "   - For archetype=placed_on_surface: 'Place the Alluvi product (from the second",
+            "     image) on <surface from scenario.grip_or_placement> between <props>... The",
+            "     persona's pose stays exactly as in the first image.'",
+            "   - For archetype=held_*: 'She is now holding the Alluvi product (from the second",
+            "     image) in her <hand> hand at <position> — at <position> specifically, not",
+            "     <2-3 negative exclusions max>... Her body posture and <holding-arm> may shift",
+            "     naturally for the holding pose; everything else stays from the first image.'",
+            "   - For archetype=flat_lay: 'Compose a flat-lay arrangement with the Alluvi",
+            "     product (from the second image) centered, surrounded by <props from scene>.",
+            "     Shot from directly above.'",
+            "",
+            "2. PRODUCT — quoted-text packaging spec. ~85 words. SAME across all scenarios.",
+            "   Use this exact text (preserve quote marks — they are the highest-leverage",
+            "   fidelity tool per the apiyi study):",
+            "   --------",
+            '   PRODUCT (preserve exactly, from the second image): A horizontal rectangular',
+            '   white cardboard box with the text "TIRZEPATIDE", "DUAL AGONIST OF GLP-1,',
+            '   GIP RECEPTORS", "ALLUVI", "HEALTHCARE", "40mg" on the front face. Flowing',
+            '   blue wave-mesh gradient diagonally across the lower front face. Circular',
+            '   green "GOOD MANUFACTURING PRACTICE CERTIFIED" seal in the center. White',
+            '   base color. Approximately 7 inches wide by 3 inches tall. The printed',
+            '   design rotates with the box as one coherent surface — never reflowed,',
+            '   redesigned, mirrored, or text-reversed.',
+            "   --------",
+            "",
+            "3. PRESERVE FROM FIRST IMAGE — categorical only. ~20-30 words.",
+            "   - List CATEGORIES: face, hair, skin, body, outfit, jewelry, pose, scene, lighting.",
+            "   - Add a ONE-PHRASE scene cue in parens (e.g., 'boutique hotel bedroom').",
+            "   - For held_* archetypes: replace 'pose' with 'the left/right hand position",
+            "     and legs' (or whichever non-holding limbs are preserved).",
+            "   - DO NOT describe the persona's appearance (face, outfit, hair) in detail.",
+            "     The model already sees this in image #1. Re-describing creates",
+            "     contradictions and dilutes attention.",
+            "",
+            "4. ANATOMY — the new clause (REQUIRED VERBATIM):",
+            "   --------",
+            "   ANATOMY: natural human anatomy — two arms, two hands, two legs. Fingers",
+            "   that grip or pass behind the product stay HIDDEN behind it — do NOT render",
+            "   additional visible fingers around the product to 'complete' the hand. The",
+            "   hand should read like a real photograph: some fingers visible, some",
+            "   naturally occluded. No extra limbs.",
+            "   --------",
+            "   DO NOT count fingers. The old 'five fingers per hand' clause caused Qwen",
+            "   to render extras around the product. The new clause explicitly forbids this.",
+            "",
+            "5. UNIQUENESS — single sentence:",
+            "   - 'Exactly ONE Alluvi product is visible in the scene.'",
+            "   - For mirror scenarios add: '(A mirror reflection of the held product counts",
+            "     as the same product, not a duplicate.)'",
+            "",
+            "6. LIGHTING — echo Step 1's sentence 4 lighting language. ~30-50 words.",
+            "   - Quote or near-quote the lighting description from Step 1.",
+            "   - End with: 'Apply this directional light to the product's white surface",
+            "     as illumination — do not tint the white toward the scene's color cast.'",
+            "",
+            "The step_2_image_prompt should be ONE STRING with the section labels (EDIT:,",
+            "PRODUCT:, etc.) inline followed by their content. Use newline-newline (\\n\\n)",
+            "between sections for readability.",
+            "",
+            "BANNED in this v6 prompt:",
+            "  - Persona/outfit/scene re-description in detail (categorical only)",
+            "  - Counting fingers (anywhere — 'five fingers', 'four fingers plus thumb')",
+            "  - 'fingers occluded still fully exist' or any variant",
+            "  - 4+ negative exclusions stacked on a single positive (keep to 2-3 max)",
+            "  - Repeated 'keep X unchanged' anchors (one PRESERVE section is enough)",
+            "  - Describing product packaging text WITHOUT quote marks",
+            "  - 'Match the lighting' without echoing Step 1's lighting language",
         ]
     )
 
     scenario_id = scenario.get("id", "?")
-    print(f"[step_2_prompt_builder] Step 2 (Qwen-tuned) -> Opus 4.7 for scenario {scenario_id}")
+    print(f"[step_2_prompt_builder] Step 2 (Qwen v6 tagged) -> Opus 4.7 for scenario {scenario_id}")
     response = _get_client().messages.create(
         model=CLAUDE_MODEL,
         max_tokens=4096,
