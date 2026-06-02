@@ -1,0 +1,10 @@
+{
+  "endpoint": "local/comfyui-latentsync",
+  "server": "127.0.0.1:8189",
+  "workflow_template": "latentsync_alluvi_test_v2",
+  "arguments": {
+    "video": "lipvid_d141705c.mp4",
+    "audio": "lipaud_73f4fa40.flac",
+    "seed": 2011968587
+  }
+}

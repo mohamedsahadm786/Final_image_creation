@@ -1,0 +1,63 @@
+===== /workspace/models (top level) =====
+total 20575
+drwxrwxrwx  7 root root 3016721 May 14 09:40 .
+drwxrwxrwx 14 root root 3034079 May 29 16:19 ..
+drwxrwxrwx 10 root root 3005391 May 14 09:40 FLUX.1-Kontext-dev
+drwxrwxrwx 10 root root 3005391 May 14 09:37 FLUX.1-dev
+drwxrwxrwx  3 root root 3000451 May 14 09:39 PuLID
+drwxrwxrwx  9 root root 3005375 May 14 09:38 Qwen-Image-Edit-2511
+drwxrwxrwx  3 root root 3000111 May 14 08:56 insightface
+
+===== weight files >50MB (size + path) =====
+23G	/workspace/models/FLUX.1-Kontext-dev/flux1-kontext-dev.safetensors
+160M	/workspace/models/FLUX.1-Kontext-dev/vae/diffusion_pytorch_model.safetensors
+320M	/workspace/models/FLUX.1-Kontext-dev/ae.safetensors
+9.3G	/workspace/models/FLUX.1-Kontext-dev/transformer/diffusion_pytorch_model-00002-of-00003.safetensors
+9.3G	/workspace/models/FLUX.1-Kontext-dev/transformer/diffusion_pytorch_model-00001-of-00003.safetensors
+3.7G	/workspace/models/FLUX.1-Kontext-dev/transformer/diffusion_pytorch_model-00003-of-00003.safetensors
+4.7G	/workspace/models/FLUX.1-Kontext-dev/text_encoder_2/model-00001-of-00002.safetensors
+4.3G	/workspace/models/FLUX.1-Kontext-dev/text_encoder_2/model-00002-of-00002.safetensors
+235M	/workspace/models/FLUX.1-Kontext-dev/text_encoder/model.safetensors
+1.5G	/workspace/models/PuLID/pulid_v1.bin
+1.1G	/workspace/models/PuLID/pulid_flux_v0.9.0.safetensors
+939M	/workspace/models/PuLID/pulid_v1.1.safetensors
+1.1G	/workspace/models/PuLID/pulid_flux_v0.9.1.safetensors
+243M	/workspace/models/Qwen-Image-Edit-2511/vae/diffusion_pytorch_model.safetensors
+9.4G	/workspace/models/Qwen-Image-Edit-2511/transformer/diffusion_pytorch_model-00002-of-00005.safetensors
+9.4G	/workspace/models/Qwen-Image-Edit-2511/transformer/diffusion_pytorch_model-00003-of-00005.safetensors
+9.3G	/workspace/models/Qwen-Image-Edit-2511/transformer/diffusion_pytorch_model-00004-of-00005.safetensors
+9.3G	/workspace/models/Qwen-Image-Edit-2511/transformer/diffusion_pytorch_model-00001-of-00005.safetensors
+937M	/workspace/models/Qwen-Image-Edit-2511/transformer/diffusion_pytorch_model-00005-of-00005.safetensors
+4.7G	/workspace/models/Qwen-Image-Edit-2511/text_encoder/model-00001-of-00004.safetensors
+4.6G	/workspace/models/Qwen-Image-Edit-2511/text_encoder/model-00003-of-00004.safetensors
+4.7G	/workspace/models/Qwen-Image-Edit-2511/text_encoder/model-00002-of-00004.safetensors
+1.6G	/workspace/models/Qwen-Image-Edit-2511/text_encoder/model-00004-of-00004.safetensors
+23G	/workspace/models/FLUX.1-dev/flux1-dev.safetensors
+160M	/workspace/models/FLUX.1-dev/vae/diffusion_pytorch_model.safetensors
+320M	/workspace/models/FLUX.1-dev/ae.safetensors
+9.3G	/workspace/models/FLUX.1-dev/transformer/diffusion_pytorch_model-00001-of-00003.safetensors
+9.3G	/workspace/models/FLUX.1-dev/transformer/diffusion_pytorch_model-00002-of-00003.safetensors
+3.7G	/workspace/models/FLUX.1-dev/transformer/diffusion_pytorch_model-00003-of-00003.safetensors
+4.7G	/workspace/models/FLUX.1-dev/text_encoder_2/model-00001-of-00002.safetensors
+4.3G	/workspace/models/FLUX.1-dev/text_encoder_2/model-00002-of-00002.safetensors
+235M	/workspace/models/FLUX.1-dev/text_encoder/model.safetensors
+249M	/workspace/models/insightface/models/antelopev2/recognition/model.onnx
+243M	/workspace/comfyui-stage2/ComfyUI/models/vae/wan_2.1_vae.safetensors
+243M	/workspace/comfyui-stage2/ComfyUI/models/vae/qwen_image_vae.safetensors
+11G	/workspace/comfyui-stage2/ComfyUI/models/text_encoders/umt5_xxl_fp16.safetensors
+8.8G	/workspace/comfyui-stage2/ComfyUI/models/text_encoders/qwen_2.5_vl_7b_fp8_scaled.safetensors
+1.2G	/workspace/comfyui-stage2/ComfyUI/models/loras/wan2.2_i2v_lightx2v_4steps_lora_v1_low_noise.safetensors
+1.2G	/workspace/comfyui-stage2/ComfyUI/models/loras/wan2.2_i2v_lightx2v_4steps_lora_v1_high_noise.safetensors
+27G	/workspace/comfyui-stage2/ComfyUI/models/diffusion_models/wan2.2_i2v_low_noise_14B_fp16.safetensors
+27G	/workspace/comfyui-stage2/ComfyUI/models/diffusion_models/wan2.2_i2v_high_noise_14B_fp16.safetensors
+39G	/workspace/comfyui-stage2/ComfyUI/models/diffusion_models/qwen_image_edit_2511_bf16.safetensors
+1.3G	/workspace/comfyui-tts/models/F5-TTS/F5TTS_v1_Base/model_1250000.safetensors
+52M	/workspace/comfyui-tts/models/TTS/F5-TTS/vocos/pytorch_model.bin
+320M	/workspace/comfyui-tts/custom_nodes/ComfyUI-LatentSyncWrapper/checkpoints/vae/diffusion_pytorch_model.bin
+320M	/workspace/comfyui-tts/custom_nodes/ComfyUI-LatentSyncWrapper/checkpoints/vae/diffusion_pytorch_model.safetensors
+4.8G	/workspace/comfyui-tts/custom_nodes/ComfyUI-LatentSyncWrapper/checkpoints/latentsync_unet.pt
+1.5G	/workspace/comfyui-tts/custom_nodes/ComfyUI-LatentSyncWrapper/checkpoints/stable_syncnet.pt
+73M	/workspace/comfyui-tts/custom_nodes/ComfyUI-LatentSyncWrapper/checkpoints/whisper/tiny.pt
+1.9G	/workspace/comfyui-tts/custom_nodes/ComfyUI-LatentSyncWrapper/checkpoints/auxiliary/vit_g_hybrid_pt_1200e_ssv2_ft.pth
+528M	/workspace/comfyui-tts/custom_nodes/ComfyUI-LatentSyncWrapper/checkpoints/auxiliary/vgg16-397923af.pth
+86M	/workspace/comfyui-tts/custom_nodes/ComfyUI-LatentSyncWrapper/checkpoints/auxiliary/sfd_face.pth

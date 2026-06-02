@@ -1,0 +1,15 @@
+{
+  "endpoint": "local/comfyui-wan2.2-i2v",
+  "server": "127.0.0.1:8188",
+  "workflow_template": "wan_i2v_alluvi_ladder_v3",
+  "arguments": {
+    "image": "wanin_5d24999a.jpg",
+    "motion_prompt": "The woman stands composed, product held steady and clearly in view. She gives a subtle, slow inhale that gently lifts her shoulders, then settles back into stillness. Her gaze stays on the camera with calm, grounded eye contact. The expression softens slightly into quiet confidence. The hand holding the product remains relaxed and steady, label readable. The rest of the body stays still. Camera performs one gentle, steady push-in at a natural pace. Mouth closed and relaxed throughout. calm natural human motion, the rest of the body still and relaxed, product clearly visible, mouth closed, face stable, identity preserved, product label stable, cinematic realism",
+    "negative_prompt": "face distortion, identity drift, extra fingers, deformed hands, warped product, unstable product label, product out of frame, open mouth, talking, lip movement, flickering, morphing, warping, color shift, jitter, unnatural movement, robotic motion, exaggerated motion, twitching, shaky camera, looking around, distracted gaze, 色调艳丽，过曝，静态，细节模糊不清，字幕，风格，作品，画作，画面，静止，整体发灰，最差质量，低质量，JPEG压缩残留，丑陋的，残缺的，多余的手指，画得不好的手部，画得不好的脸部，畸形的，毁容的，形态畸形的肢体，手指融合，静止不动的画面，杂乱的背景，三条腿，背景人很多，倒着走, face distortion, facial asymmetry, extra teeth, deformed teeth, oversized teeth, large front teeth, mouth warping, distorted mouth, malformed mouth, teeth artifacts, ugly teeth",
+    "num_frames": 57,
+    "width": 768,
+    "height": 1344,
+    "fps": 16,
+    "seed": 292304198
+  }
+}

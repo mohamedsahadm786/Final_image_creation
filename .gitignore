@@ -1,13 +1,36 @@
+# secrets
 .env
 .env.local
 ollama_flow/.env
+
+# data / outputs / caches
 data/
 outputs/
 cache/
 hf_cache/
 *.log
+
+# python
 __pycache__/
 *.pyc
 *.pyo
 venv/
 .venv/
+
+# jupyter checkpoint junk
+.ipynb_checkpoints/
+
+# scratch tester outputs (generated; never commit)
+test_inputs/out/
+test_inputs/out_multishot/
+test_inputs/merge_tests/
+
+# generated media + frame dumps
+*.mp4
+*.flac
+*.wav
+*.webp
+
+# local db / backups
+*.db
+*.bak

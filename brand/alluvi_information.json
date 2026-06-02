@@ -1,0 +1,308 @@
+{
+  "knowledge_base_version": "2.0",
+
+  "system_identity": {
+    "brand_name": "ALLUVI",
+    "product_name": "Tirzepatide",
+    "industry": "premium peptide wellness and metabolic optimization",
+    "brand_positioning": "modern premium wellness and peptide lifestyle brand",
+    "content_goal": "generate highly realistic cinematic social-media promotional content for modern wellness audiences"
+  },
+
+  "brand_personality": {
+    "core_traits": [
+      "premium",
+      "modern",
+      "minimal",
+      "science-driven",
+      "confident",
+      "clean",
+      "cinematic",
+      "aspirational",
+      "wellness-focused",
+      "high-performance"
+    ],
+
+    "brand_voice": [
+      "warm",
+      "confident",
+      "socially natural",
+      "conversational",
+      "motivational",
+      "lifestyle-oriented",
+      "emotionally engaging",
+      "modern influencer style"
+    ],
+
+    "visual_identity": [
+      "luxury wellness aesthetic",
+      "minimal premium environments",
+      "clean cinematic lighting",
+      "high-end social media visuals",
+      "soft warm tones",
+      "fitness and wellness culture",
+      "modern influencer presentation"
+    ]
+  },
+
+  "company_context": {
+    "company_description": "ALLUVI is positioned as a premium wellness and peptide-focused brand centered around modern metabolic optimization, wellness culture, fitness lifestyle and high-performance self-improvement.",
+
+    "audience_profile": [
+      "fitness-oriented individuals",
+      "modern wellness audiences",
+      "gym-focused lifestyle consumers",
+      "health-conscious professionals",
+      "self-improvement focused individuals",
+      "social-media-native wellness communities"
+    ],
+
+    "social_media_style": [
+      "TikTok influencer aesthetic",
+      "Instagram Reels lifestyle content",
+      "premium wellness storytelling",
+      "high-end UGC content",
+      "cinematic social-first branding"
+    ]
+  },
+
+  "product_knowledge": {
+    "product_name": "Tirzepatide",
+
+    "product_type": "dual GIP and GLP-1 receptor agonist peptide",
+
+    "mechanism_summary": [
+      "Tirzepatide is a dual-acting peptide targeting both GIP and GLP-1 pathways.",
+      "Research surrounding Tirzepatide focuses heavily on metabolic regulation, appetite signaling, energy balance and wellness-related pathways.",
+      "GLP-1 and GIP pathway research has become one of the fastest-growing sectors in modern wellness and metabolic science."
+    ],
+
+    "scientific_context": [
+      "modern metabolic research",
+      "wellness optimization",
+      "energy balance",
+      "satiety pathway research",
+      "body composition studies",
+      "fitness-oriented wellness",
+      "high-performance health culture",
+      "advanced peptide research",
+      "metabolic support research"
+    ],
+
+    "wellness_associations": [
+      "daily discipline",
+      "healthy routines",
+      "consistency",
+      "fitness motivation",
+      "confidence",
+      "self-improvement",
+      "active lifestyle",
+      "gym culture",
+      "wellness awareness",
+      "healthy habit building",
+      "routine optimization",
+      "mindset improvement",
+      "body awareness",
+      "modern wellness living"
+    ],
+
+    "positive_lifestyle_language": [
+      "feeling more consistent",
+      "feeling more focused",
+      "staying motivated",
+      "building healthier routines",
+      "being more disciplined",
+      "feeling more balanced",
+      "showing up consistently",
+      "feeling more active",
+      "more confidence in daily life",
+      "better wellness mindset",
+      "more structured habits",
+      "greater commitment to self-care",
+      "more confidence in routines",
+      "improved motivation levels",
+      "greater fitness consistency"
+    ]
+  },
+
+  "marketing_language_engine": {
+    "high_performing_phrases": [
+      "part of my routine",
+      "trying to stay consistent",
+      "focused on wellness lately",
+      "working on healthier habits",
+      "trying to improve daily discipline",
+      "feeling more motivated lately",
+      "trying to stay on track",
+      "building better routines",
+      "staying committed to myself",
+      "trying to become my best self",
+      "taking wellness more seriously",
+      "showing up for myself consistently"
+    ],
+
+    "hook_styles": [
+      "casual relatable hook",
+      "late-night reflection style",
+      "morning routine style",
+      "gym lifestyle style",
+      "confident self-improvement hook",
+      "social-media conversational hook",
+      "wellness diary style",
+      "realistic influencer storytelling"
+    ],
+
+    "conversation_styles": [
+      "natural TikTok conversation",
+      "modern Instagram Reel delivery",
+      "cinematic influencer monologue",
+      "soft-spoken premium branding",
+      "emotionally grounded lifestyle dialogue"
+    ]
+  },
+
+  "video_generation_preferences": {
+    "preferred_duration": "15 seconds",
+
+    "aspect_ratio": "9:16",
+
+    "preferred_platforms": [
+      "TikTok",
+      "Instagram Reels",
+      "YouTube Shorts"
+    ],
+
+    "camera_motion": [
+      "slow push-in",
+      "soft handheld drift",
+      "subtle cinematic parallax",
+      "smooth tripod movement",
+      "premium floating motion"
+    ],
+
+    "motion_behavior": [
+      "continuous subtle movement",
+      "natural blinking",
+      "realistic breathing",
+      "gentle smiling",
+      "natural conversational gestures",
+      "soft body shifting",
+      "realistic eye movement",
+      "smooth hand movement"
+    ],
+
+    "visual_style": [
+      "cinematic realism",
+      "photorealistic skin",
+      "warm luxury lighting",
+      "premium wellness aesthetic",
+      "high-end influencer visuals",
+      "clean minimal environments",
+      "soft cinematic shadows"
+    ],
+
+    "audio_preferences": [
+      "soft premium background music",
+      "clean modern ambient music",
+      "warm conversational vocal tone",
+      "subtle room ambience",
+      "social-media optimized audio"
+    ]
+  },
+
+  "scene_generation_system": {
+    "preferred_locations": [
+      "modern apartment",
+      "minimal luxury bedroom",
+      "high-end gym",
+      "luxury bathroom",
+      "premium wellness studio",
+      "modern kitchen",
+      "sunset balcony",
+      "minimal workspace",
+      "high-end cafe",
+      "wellness-inspired environment"
+    ],
+
+    "wardrobe_style": [
+      "premium activewear",
+      "minimal neutral fashion",
+      "luxury athleisure",
+      "wellness influencer style",
+      "gym lifestyle fashion",
+      "modern clean casualwear"
+    ],
+
+    "scene_moods": [
+      "quiet confidence",
+      "motivated",
+      "aspirational",
+      "focused",
+      "calm luxury",
+      "wellness lifestyle",
+      "modern self-improvement",
+      "high-performance mindset"
+    ]
+  },
+
+  "dialogue_generation_rules": {
+    "dialogue_style": [
+      "natural",
+      "human",
+      "social-media conversational",
+      "emotionally engaging",
+      "warm",
+      "realistic",
+      "hook-driven",
+      "modern influencer style"
+    ],
+
+    "dialogue_requirements": [
+      "dialogue should feel naturally spoken",
+      "dialogue should contain continuous conversational pacing",
+      "dialogue should avoid robotic delivery",
+      "dialogue should feel emotionally believable",
+      "dialogue should sound socially authentic",
+      "dialogue should mention the product naturally",
+      "dialogue should maintain premium influencer tone"
+    ],
+
+    "example_dialogues": [
+      "Honestly, I’ve been trying to stay more consistent lately.",
+      "I’ve really been focusing on healthier routines recently.",
+      "The biggest thing for me has honestly been discipline.",
+      "I’m trying to take wellness more seriously these days.",
+      "Lately I’ve just been more focused on showing up for myself.",
+      "This whole routine feels way more structured now.",
+      "I’ve been trying to stay more active and intentional lately.",
+      "Honestly, I just feel better when I stay consistent."
+    ]
+  },
+
+  "ai_generation_priorities": {
+    "highest_priority": [
+      "facial identity consistency",
+      "product consistency",
+      "realistic human movement",
+      "stable product labels",
+      "natural lip sync",
+      "cinematic realism",
+      "social-media engagement quality",
+      "natural conversational pacing",
+      "premium influencer aesthetic",
+      "smooth temporal consistency"
+    ],
+
+    "negative_generation_controls": [
+      "no face distortion",
+      "no extra fingers",
+      "no unstable motion",
+      "no warped products",
+      "no unnatural blinking",
+      "no low-quality textures",
+      "no flickering",
+      "no morphing artifacts",
+      "no unrealistic body movement"
+    ]
+  }
+}

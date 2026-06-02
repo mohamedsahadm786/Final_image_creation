@@ -1,0 +1,171 @@
+{
+  "1": {
+    "class_type": "UNETLoader",
+    "inputs": {
+      "unet_name": "qwen_image_edit_2511_bf16.safetensors",
+      "weight_dtype": "default"
+    }
+  },
+  "2": {
+    "class_type": "CLIPLoader",
+    "inputs": {
+      "clip_name": "qwen_2.5_vl_7b_fp8_scaled.safetensors",
+      "type": "qwen_image",
+      "device": "default"
+    }
+  },
+  "3": {
+    "class_type": "VAELoader",
+    "inputs": {
+      "vae_name": "qwen_image_vae.safetensors"
+    }
+  },
+  "4": {
+    "class_type": "LoadImage",
+    "inputs": {
+      "image": "__PERSONA_IMAGE__"
+    }
+  },
+  "5": {
+    "class_type": "LoadImage",
+    "inputs": {
+      "image": "__PRODUCT_IMAGE__"
+    }
+  },
+  "6": {
+    "class_type": "TextEncodeQwenImageEditPlusAdvance_lrzjason",
+    "inputs": {
+      "clip": [
+        "2",
+        0
+      ],
+      "prompt": "__PROMPT__",
+      "vae": [
+        "3",
+        0
+      ],
+      "vl_resize_image1": [
+        "4",
+        0
+      ],
+      "vl_resize_image2": [
+        "5",
+        0
+      ],
+      "not_resize_image1": [
+        "4",
+        0
+      ],
+      "not_resize_image2": [
+        "5",
+        0
+      ],
+      "target_size": "__TARGET_SIZE__",
+      "target_vl_size": 384,
+      "upscale_method": "lanczos",
+      "crop_method": "pad",
+      "instruction": "",
+      "vl_resize_image3": [
+        "5",
+        0
+      ],
+      "not_resize_image3": [
+        "5",
+        0
+      ]
+    }
+  },
+  "7": {
+    "class_type": "TextEncodeQwenImageEditPlusAdvance_lrzjason",
+    "inputs": {
+      "clip": [
+        "2",
+        0
+      ],
+      "prompt": "__NEGATIVE__",
+      "vae": [
+        "3",
+        0
+      ],
+      "vl_resize_image1": [
+        "4",
+        0
+      ],
+      "vl_resize_image2": [
+        "5",
+        0
+      ],
+      "not_resize_image1": [
+        "4",
+        0
+      ],
+      "not_resize_image2": [
+        "5",
+        0
+      ],
+      "target_size": "__TARGET_SIZE__",
+      "target_vl_size": 384,
+      "upscale_method": "lanczos",
+      "crop_method": "pad",
+      "instruction": "",
+      "vl_resize_image3": [
+        "5",
+        0
+      ],
+      "not_resize_image3": [
+        "5",
+        0
+      ]
+    }
+  },
+  "9": {
+    "class_type": "KSampler",
+    "inputs": {
+      "model": [
+        "1",
+        0
+      ],
+      "positive": [
+        "6",
+        0
+      ],
+      "negative": [
+        "7",
+        0
+      ],
+      "latent_image": [
+        "6",
+        1
+      ],
+      "seed": "__SEED__",
+      "steps": "__STEPS__",
+      "cfg": "__CFG__",
+      "sampler_name": "euler",
+      "scheduler": "simple",
+      "denoise": 1.0
+    }
+  },
+  "10": {
+    "class_type": "VAEDecode",
+    "inputs": {
+      "samples": [
+        "9",
+        0
+      ],
+      "vae": [
+        "3",
+        0
+      ]
+    }
+  },
+  "11": {
+    "class_type": "SaveImage",
+    "inputs": {
+      "images": [
+        "10",
+        0
+      ],
+      "filename_prefix": "alluvi_stage2"
+    }
+  }
+}

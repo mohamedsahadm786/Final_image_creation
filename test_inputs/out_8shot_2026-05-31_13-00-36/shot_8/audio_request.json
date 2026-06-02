@@ -1,0 +1,18 @@
+{
+  "endpoint": "local/comfyui-f5-tts",
+  "server": "127.0.0.1:8189",
+  "workflow_template": "tts_f5_alluvi_test_v2",
+  "arguments": {
+    "text": "I'd honestly recommend giving ALLUVI a place in your own routine.",
+    "narrator_voice": "voices_examples/female/female_02.wav",
+    "seed": 292304193,
+    "language": "F5TTS_v1_Base",
+    "device": "auto",
+    "temperature": 0.8,
+    "speed": 1.0,
+    "target_rms": 0.1,
+    "cross_fade_duration": 0.15,
+    "nfe_step": 32,
+    "cfg_strength": 2.0
+  }
+}

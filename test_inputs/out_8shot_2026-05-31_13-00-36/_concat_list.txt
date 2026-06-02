@@ -1,0 +1,8 @@
+file '/workspace/alluvi-pipeline/test_inputs/out_8shot_2026-05-31_13-00-36/shot_1/final.mp4'
+file '/workspace/alluvi-pipeline/test_inputs/out_8shot_2026-05-31_13-00-36/shot_2/final.mp4'
+file '/workspace/alluvi-pipeline/test_inputs/out_8shot_2026-05-31_13-00-36/shot_3/final.mp4'
+file '/workspace/alluvi-pipeline/test_inputs/out_8shot_2026-05-31_13-00-36/shot_4/final.mp4'
+file '/workspace/alluvi-pipeline/test_inputs/out_8shot_2026-05-31_13-00-36/shot_5/final.mp4'
+file '/workspace/alluvi-pipeline/test_inputs/out_8shot_2026-05-31_13-00-36/shot_6/final.mp4'
+file '/workspace/alluvi-pipeline/test_inputs/out_8shot_2026-05-31_13-00-36/shot_7/final.mp4'
+file '/workspace/alluvi-pipeline/test_inputs/out_8shot_2026-05-31_13-00-36/shot_8/final.mp4'

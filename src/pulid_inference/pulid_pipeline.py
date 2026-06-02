@@ -172,7 +172,7 @@ class PulidWrapper:
         id_weight: float = 1.0,
         true_cfg: float = 1.5,
         negative_prompt: str = "",
-        max_sequence_length: int = 256,
+        max_sequence_length: int = 512,
         seed: int | None = None,
         start_step: int = 0,
         timestep_to_start_cfg: int = 1,

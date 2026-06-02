@@ -1,0 +1,98 @@
+{
+  "1": {
+    "inputs": {
+      "video": "Wan2.2_i2v_00013_.mp4",
+      "force_rate": 25.0,
+      "custom_width": 0,
+      "custom_height": 0,
+      "frame_load_cap": 0,
+      "skip_first_frames": 0,
+      "select_every_nth": 1,
+      "format": "AnimateDiff"
+    },
+    "class_type": "VHS_LoadVideo",
+    "_meta": {
+      "title": "Load Video (Upload) \ud83c\udfa5\ud83c\udd65\ud83c\udd57\ud83c\udd62"
+    }
+  },
+  "2": {
+    "inputs": {
+      "audio": "alluvi_voice_00004_.flac",
+      "audioUI": "/api/view?filename=alluvi_voice_00004_.flac&type=input&subfolder=&rand=0.13377848538022208"
+    },
+    "class_type": "LoadAudio",
+    "_meta": {
+      "title": "Load Audio"
+    }
+  },
+  "3": {
+    "inputs": {
+      "mode": "loop_to_audio",
+      "fps": 35.8,
+      "silent_padding_sec": 0.5,
+      "images": [
+        "1",
+        0
+      ],
+      "audio": [
+        "2",
+        0
+      ]
+    },
+    "class_type": "VideoLengthAdjuster",
+    "_meta": {
+      "title": "Video Length Adjuster"
+    }
+  },
+  "4": {
+    "inputs": {
+      "seed": 1247,
+      "lips_expression": 1.5,
+      "inference_steps": 20,
+      "images": [
+        "3",
+        0
+      ],
+      "audio": [
+        "3",
+        1
+      ]
+    },
+    "class_type": "LatentSyncNode",
+    "_meta": {
+      "title": "LatentSync1.6 Node"
+    }
+  },
+  "5": {
+    "inputs": {
+      "fps": 25.0,
+      "images": [
+        "4",
+        0
+      ],
+      "audio": [
+        "4",
+        1
+      ]
+    },
+    "class_type": "CreateVideo",
+    "_meta": {
+      "title": "Create Video"
+    }
+  },
+  "6": {
+    "inputs": {
+      "filename_prefix": "alluvi_lipsync",
+      "format": "auto",
+      "codec": "auto",
+      "video": [
+        "5",
+        0
+      ]
+    },
+    "class_type": "SaveVideo",
+    "_meta": {
+      "title": "Save Video"
+    }
+  }
+}

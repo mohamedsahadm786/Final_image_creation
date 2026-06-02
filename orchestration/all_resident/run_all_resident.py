@@ -58,7 +58,7 @@ from src import scenario_loader
 from src import step_1_prompt_builder
 from src import step_1_pulid
 from src import step_2_prompt_builder
-from src import step_2_qwen_edit
+from src import step_2_qwen_comfyui as step_2_qwen_edit
 from src import step_3_realism
 from src import trace_html
 from src import overview_html
@@ -249,9 +249,12 @@ def process_scenario_resident(
         return
 
     record["step_1_output"] = step_1_output
-    (output_dir / "02_step1_prompt.json").write_text(
-        json.dumps(step_1_output, indent=2, ensure_ascii=False), encoding="utf-8"
-    )
+    try:
+        (output_dir / "02_step1_prompt.json").write_text(
+            json.dumps(step_1_output, indent=2, ensure_ascii=False), encoding="utf-8"
+        )
+    except Exception as e:
+        print(f"  [{sid}] write 02_step1_prompt.json failed (non-fatal): {e}")
     try:
         db.update_step_1(record["gen_id"], status="prompt_built", prompt=step_1_text)
     except Exception as e:
@@ -325,9 +328,12 @@ def process_scenario_resident(
         return
 
     record["step_2_output"] = step_2_output
-    (output_dir / "04_step2_prompt.json").write_text(
-        json.dumps(step_2_output, indent=2, ensure_ascii=False), encoding="utf-8"
-    )
+    try:
+        (output_dir / "04_step2_prompt.json").write_text(
+            json.dumps(step_2_output, indent=2, ensure_ascii=False), encoding="utf-8"
+        )
+    except Exception as e:
+        print(f"  [{sid}] write 04_step2_prompt.json failed (non-fatal): {e}")
     try:
         db.update_step_2(record["gen_id"], status="prompt_built", prompt=step_2_text)
     except Exception as e:
@@ -342,6 +348,10 @@ def process_scenario_resident(
     final_step_2_meta = None
     qc_attempts: list[dict] = []
 
+    # Stage 2 prompt for the current attempt — defects from a failed QC
+    # are appended as an "AVOID:" line before each retry (no extra API call).
+    attempt_prompt = step_2_text
+
     for attempt in range(1, MAX_QC_RETRIES + 2):
         attempt_image_path = output_dir / f"05_step2_final_attempt_{attempt}.jpg"
         is_last = attempt == MAX_QC_RETRIES + 1
@@ -350,7 +360,7 @@ def process_scenario_resident(
             step_2_meta = step_2_qwen_edit.generate(
                 pipeline=pipe_2,
                 step_1_local_path=str(persona_out_path),
-                step_2_prompt=step_2_text,
+                step_2_prompt=attempt_prompt,
                 fal_qwen_params=qwen_params,
                 out_path=attempt_image_path,
                 scenario_id=f"{sid}#a{attempt}",
@@ -410,21 +420,36 @@ def process_scenario_resident(
             print(f"  [{sid}] QC failed on final attempt {attempt} — skipping Stage 3")
             final_qc_result = qc_result
         else:
-            print(f"  [{sid}] QC failed attempt {attempt} — retrying Stage 2")
+            # feed the found defects back into the prompt for the retry
+            defects = [str(x) for x in (qc_result.get("issues") or []) if str(x).strip()]
+            if defects:
+                avoid_line = "AVOID: " + "; ".join(defects[:6]) + "."
+                attempt_prompt = step_2_text + "\n\n" + avoid_line
+                print(f"  [{sid}] QC failed attempt {attempt} — retrying Stage 2 "
+                      f"with {len(defects)} defect hint(s)")
+            else:
+                attempt_prompt = step_2_text
+                print(f"  [{sid}] QC failed attempt {attempt} — retrying Stage 2")
 
     if final_step_2_meta is None:
         return  # already marked failed
 
-    (output_dir / "05_step2_meta.json").write_text(
-        json.dumps(final_step_2_meta, indent=2, ensure_ascii=False), encoding="utf-8"
-    )
+    try:
+        (output_dir / "05_step2_meta.json").write_text(
+            json.dumps(final_step_2_meta, indent=2, ensure_ascii=False), encoding="utf-8"
+        )
+    except Exception as e:
+        print(f"  [{sid}] write 05_step2_meta.json failed (non-fatal): {e}")
     record["step_2_meta"] = final_step_2_meta
     if final_qc_result:
-        (output_dir / "06_qc_result.json").write_text(
-            json.dumps({**final_qc_result, "attempts": qc_attempts},
-                       indent=2, ensure_ascii=False),
-            encoding="utf-8",
-        )
+        try:
+            (output_dir / "06_qc_result.json").write_text(
+                json.dumps({**final_qc_result, "attempts": qc_attempts},
+                           indent=2, ensure_ascii=False),
+                encoding="utf-8",
+            )
+        except Exception as e:
+            print(f"  [{sid}] write 06_qc_result.json failed (non-fatal): {e}")
         record["qc_result"] = final_qc_result
         record["qc_attempts"] = qc_attempts
 
@@ -476,14 +501,17 @@ def process_scenario_resident(
     # 6. Stage 3 inference (resident pipe_3, only if QC passed)
     if step_3_enabled and qc_passed:
         step_3_out_path = output_dir / "07_step3_realism.jpg"
-        lighting_hint = (scenario.get("lighting") or "").strip() or None
+        # NOTE: extra_lighting_hint deliberately NOT passed. The Stage 2
+        # image already has the scene's lighting baked in, and appending
+        # the scenario's lighting text (~40 words) blows past CLIP's
+        # 77-token limit and risks Kontext treating it as a relight
+        # instruction rather than a preservation hint.
         try:
             step_3_meta = step_3_realism.generate(
                 pipeline=pipe_3,
                 step_2_local_path=str(final_out_path),
                 out_path=step_3_out_path,
                 scenario_id=sid,
-                extra_lighting_hint=lighting_hint,
             )
             (output_dir / "07_step3_meta.json").write_text(
                 json.dumps(step_3_meta, indent=2, ensure_ascii=False), encoding="utf-8"
@@ -765,15 +793,21 @@ def main() -> int:
         print("=" * 72)
         print(f" PHASE C — unloading all pipelines")
         print("=" * 72)
+        # pipe_2 is a ComfyUIHandle — vram_utils can't touch the server
+        # process; call the ComfyUI module's own unload helper instead.
         for name, pipe in (("pipe_3 (Kontext)", pipe_3),
                             ("pipe_2 (Qwen)", pipe_2),
                             ("pipe_1 (PuLID)", pipe_1)):
-            if pipe is not None:
-                try:
-                    print(f"  unloading {name}...")
+            if pipe is None:
+                continue
+            try:
+                print(f"  unloading {name}...")
+                if name.startswith("pipe_2"):
+                    step_2_qwen_edit.unload_pipeline(pipe)
+                else:
                     vram_utils.unload_pipeline(pipe)
-                except Exception as e:
-                    print(f"  {name} unload error (non-fatal): {e}")
+            except Exception as e:
+                print(f"  {name} unload error (non-fatal): {e}")
         vram_utils.report_vram("after all unloads")
 
     total_elapsed = time.time() - load_start

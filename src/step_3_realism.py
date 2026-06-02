@@ -54,30 +54,17 @@ ENDPOINT_LABEL = "local/flux-kontext-dev"
 COST_PER_IMAGE_USD = 0.0  # GPU time tracked separately at batch level
 
 # Kontext defaults (matching the previous fal-side defaults)
-DEFAULT_NUM_STEPS = 28
-DEFAULT_GUIDANCE = 3.5
+DEFAULT_NUM_STEPS = 30
+DEFAULT_GUIDANCE = 2.5
 
 # Instruction-based prompt. Tells Kontext WHAT TO CHANGE and explicitly states
 # WHAT TO PRESERVE — the preservation clauses are critical (Kontext docs:
 # "Explicitly state what should remain unchanged").
 DEFAULT_REALISM_INSTRUCTION = (
-    "Aggressively transform this image to look like an authentic candid "
-    "smartphone photograph taken by a real person. "
-    "Skin: hyper-realistic with prominent visible pores, fine vellus facial hair, "
-    "natural under-eye softness, subsurface scattering, slight redness in cheeks "
-    "and ears, micro-imperfections, NOT smooth and NOT waxy. "
-    "Hair: individual strands clearly visible with natural flyaway pieces, "
-    "realistic shine and shadow, NOT a smooth mass. "
-    "Fabric: visible weave, realistic folds, natural texture variations. "
-    "Lighting: real-world directional light with natural falloff and ambient "
-    "occlusion in corners. "
-    "Film characteristics: subtle grain, slight chromatic aberration at edges, "
-    "natural color depth. "
-    "ABSOLUTELY PRESERVE UNCHANGED: the exact composition, exact pose, "
-    "exact facial identity and features, exact product packaging and all its "
-    "text/labels/colors/layout, exact outfit, exact background. "
-    "Remove all AI artifacts: no plastic skin, no glossy CGI look, no airbrushed "
-    "appearance, no uncanny valley."
+    "Make this look like a real candid smartphone photo. Natural skin with "
+    "visible pores and texture, real hair strands, fabric weave, natural "
+    "light. Keep the person, product box and all its text, outfit, pose, "
+    "and background exactly unchanged. No plastic or CGI look."
 )
 
 

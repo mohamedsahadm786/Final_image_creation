@@ -46,7 +46,7 @@ step_1:
     guidance_scale: 3.5
     id_weight: 1.0
     true_cfg: 1.5
-    max_sequence_length: "512"
+    max_sequence_length: 512
     # The following keys are fal-specific and ignored locally:
     # enable_safety_checker, output_format, num_images
 
@@ -71,7 +71,7 @@ step_3:
   endpoint: local/flux-kontext-dev
   cost_per_image_usd: 0.0
   defaults:
-    num_inference_steps: 28
-    guidance_scale: 3.5
+    num_inference_steps: 30
+    guidance_scale: 2.5
     # No safety_tolerance — Kontext-dev has no safety filter (the
     # bedroom_robe black-image issue is gone with the local model).
